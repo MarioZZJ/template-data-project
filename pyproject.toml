@@ -1,0 +1,99 @@
+# pyproject.toml - Python项目配置文件
+# 使用uv进行包管理
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# 项目基本信息 - 根据需要修改
+name = "python-data-analysis-template"
+version = "0.1.0"
+description = "Python数据分析项目模板"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+keywords = ["python", "data-analysis", "template"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+# 项目依赖 - 使用 uv add 添加依赖
+# dependencies = [
+#     # 核心数据处理库
+#     # "pandas>=1.5.0",
+#     # "numpy>=1.21.0",
+    
+#     # 可视化库
+#     # "matplotlib>=3.5.0",
+#     # "seaborn>=0.11.0",
+#     # "plotly>=5.0.0",
+    
+#     # Jupyter相关
+#     # "jupyterlab>=3.0.0",
+#     # "ipykernel>=6.0.0",
+#     # "ipywidgets>=7.0.0",
+    
+#     # 机器学习库
+#     # "scikit-learn>=1.0.0",
+#     # "xgboost>=1.5.0",
+#     # "lightgbm>=3.3.0",
+    
+#     # 深度学习库（可选）
+#     # "torch>=1.12.0",
+#     # "tensorflow>=2.8.0",
+    
+#     # 数据处理和存储
+#     # "openpyxl>=3.0.0",
+#     # "xlrd>=2.0.0",
+#     # "sqlalchemy>=1.4.0",
+#     # "pymongo>=4.0.0",
+    
+#     # API和网络
+#     # "requests>=2.28.0",
+#     # "beautifulsoup4>=4.11.0",
+#     # "aiohttp>=3.8.0",
+    
+#     # 工具库
+#     # "python-dotenv>=0.19.0",
+#     # "tqdm>=4.64.0",
+#     # "click>=8.0.0",
+#     # "typer>=0.6.0",
+# ]
+
+# 开发依赖 - 使用 uv add --group dev 添加
+# [project.optional-dependencies]
+# dev = [
+#     "jupyter>=1.0.0",
+#     "notebook>=6.4.0",
+# ]
+
+# 文档依赖 - 使用 uv add --group docs 添加
+# docs = [
+#     "sphinx>=5.0.0",
+#     "sphinx-rtd-theme>=1.0.0",
+#     "sphinxcontrib-napoleon>=0.7",
+# ]
+
+# 工具配置
+# [project.scripts]
+# 在这里添加命令行工具
+# example-script = "your_package.cli:main"
+
+# [project.urls]
+# Homepage = "https://github.com/yourusername/your-project"
+# Documentation = "https://your-project.readthedocs.io"
+# Repository = "https://github.com/yourusername/your-project.git"
+# "Bug Tracker" = "https://github.com/yourusername/your-project/issues"
