@@ -11,15 +11,22 @@
 ├── .vscode/                     # VSCode配置文件夹
 │   ├── settings.json            # VSCode设置
 │   └── extensions.json          # 推荐扩展
+├── data/                        # 数据文件夹
+│   ├── raw/                     # 原始数据（不修改）
+│   ├── processed/               # 处理后数据
+│   └── external/                # 外部来源数据
+├── outputs/                     # 输出结果
+│   ├── figures/                 # 图表
+│   └── tables/                  # 表格
+├── docs/                        # 过程文档（分析思路、方法记录）
+├── agents/                      # Agent 提示词、参考文档、功能定义
 ├── scripts/                     # 脚本文件夹
-│   └── setup_env.sh             # 虚拟环境初始化脚本
+│   └── setup_env.sh             # 交互式项目初始化脚本
 ├── src/                         # 源代码文件夹
 │   ├── __init__.py              # Python包初始化
-│   ├── data/                    # 数据文件夹
-│   ├── notebooks/               # Jupyter笔记本
-│   └── utils/                   # 工具函数
-├── pyproject.toml              # 项目配置文件
-└── .env.example                # 环境变量示例文件
+│   └── utils/                   # 可复用工具函数
+├── pyproject.toml               # 项目配置文件
+└── .env.example                 # 环境变量示例文件
 ```
 
 ## 快速开始

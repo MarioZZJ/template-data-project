@@ -228,10 +228,20 @@ $RECYCLE.BIN/
 .nfs*
 
 # Project specific
-src/data/raw/
-src/data/processed/
-src/data/external/
-outputs/
+# 数据文件（保留目录结构，忽略实际数据文件）
+data/raw/*
+data/processed/*
+data/external/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+
+# 输出结果（保留目录结构，忽略输出文件）
+outputs/figures/*
+outputs/tables/*
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+
 results/
 models/
 *.csv
