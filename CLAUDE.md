@@ -41,11 +41,19 @@ outputs/        # 输出结果
   figures/      # 图表
   tables/       # 表格
 docs/           # 过程文档（分析思路、方法记录）
-agents/         # Agent 提示词、参考文档、功能定义
+agents/
+  dbschema/     # 数据库 schema 文件（由 /TDP:db-schema 生成）
+  skills/       # Agent skill 定义
 src/
-  utils/        # 可复用工具函数
+  utils/        # 可复用工具函数（含 mssql.py）
 scripts/        # 项目脚本
 ```
+
+## 数据库表索引
+
+查询数据库相关表时，先读 `agents/dbschema/INDEX.md` 找到相关表，再读对应 schema 文件：
+
+@agents/dbschema/INDEX.md
 
 ## 环境变量
 
