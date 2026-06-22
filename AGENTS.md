@@ -29,6 +29,7 @@ Claude 兼容文件只作为链接层存在。
 - 实验流程：@docs/agents/experiment-workflow.md
 - 写作和绘图风格：@docs/agents/writing-and-figure-style.md
 - TeX 手稿流程：@docs/agents/tex-manuscript-workflow.md
+- GitHub 论文协作流程：@docs/agents/paper-collaboration-workflow.md
 - 源码组织：@src/README.md
 - 脚本策略：@scripts/README.md
 
@@ -90,8 +91,11 @@ Claude 兼容文件只作为链接层存在。
 - 模板阶段不拆分章节文件。
 - TeX 正文一行一句。
 - 段落之间空一行。
+- GitHub 上区分批注和修改：批注用 Issue 加正文 permalink，实际改写用小 PR 和 PR review。
+- 不为没有正文改动的问题创建空 PR 或无意义 whitespace 改动。
 - 图表必须能追踪到生成代码和数据。
 - 写作和绘图指南见 @docs/agents/writing-and-figure-style.md。
+- 论文协作规则见 @docs/agents/paper-collaboration-workflow.md。
 
 ## 文档策略
 

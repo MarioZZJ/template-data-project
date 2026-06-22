@@ -11,6 +11,7 @@
 - `docs/project-preferences.md`：环境、工具和操作偏好。
 - `docs/agents/`：agent 友好的项目流程文档。
 - `docs/agents/dbschema/`：数据库 schema 文档。
+- `docs/agents/paper-collaboration-workflow.md`：GitHub 论文协作流程。
 - `data/`：原始、中间、处理后和外部数据。
 - `src/`：可复用功能模块。
 - `scripts/`：集成化项目脚本。
@@ -60,6 +61,10 @@ make check-tex-style
 ```bash
 make prepare-elsevier-submission
 ```
+
+GitHub 论文协作规则见 @docs/agents/paper-collaboration-workflow.md。
+批注用 Issue 加正文 permalink，实际改写用小 PR。
+PR 会自动上传 `main.pdf`；pull request 还会上传 `manuscript-diff.pdf`。
 
 ## 依赖管理
 

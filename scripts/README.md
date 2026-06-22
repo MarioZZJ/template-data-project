@@ -10,3 +10,7 @@
 - 准备手稿或提交产物。
 
 没有真实项目上下文前，不要添加一次性 harness 脚本。
+
+现有手稿脚本：
+
+- `build-manuscript-diff.sh`：用 `git-latexdiff` 生成 `docs/writing/manuscript/build/manuscript-diff.pdf`。

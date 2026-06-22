@@ -1,0 +1,64 @@
+name: Manuscript
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build manuscript PDFs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Fetch pull request base
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin ${{ github.event.pull_request.base.sha }}
+
+      - name: Check TeX sentence-line style
+        run: make check-tex-style
+
+      - name: Build main PDF
+        uses: xu-cheng/texlive-action@v3
+        with:
+          os: debian
+          run: |
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -y
+            apt-get install -y make git
+            make manuscript
+
+      - name: Build PR diff PDF
+        if: github.event_name == 'pull_request'
+        uses: xu-cheng/texlive-action@v3
+        with:
+          os: debian
+          run: |
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -y
+            apt-get install -y make git
+            BASE_REF="${{ github.event.pull_request.base.sha }}" \
+            HEAD_REF="HEAD" \
+            make manuscript-diff
+
+      - name: Upload manuscript PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: manuscript-pdfs
+          path: |
+            docs/writing/manuscript/build/main.pdf
+            docs/writing/manuscript/build/manuscript-diff.pdf
+          if-no-files-found: error
+          retention-days: 14

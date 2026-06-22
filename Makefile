@@ -1,4 +1,4 @@
-.PHONY: init init-python init-tex manuscript clean-manuscript check-tex-style prepare-elsevier-submission dashboard
+.PHONY: init init-python init-tex manuscript manuscript-diff clean-manuscript check-tex-style prepare-elsevier-submission dashboard
 
 init: init-python init-tex
 
@@ -15,6 +15,9 @@ init-tex:
 
 manuscript:
 	@cd docs/writing/manuscript && latexmk -pdf -r ../../../.latexmkrc main.tex
+
+manuscript-diff:
+	@bash scripts/build-manuscript-diff.sh
 
 clean-manuscript:
 	@cd docs/writing/manuscript && latexmk -C -r ../../../.latexmkrc main.tex || true

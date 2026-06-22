@@ -12,6 +12,7 @@
 
 - `make init-tex`：检查本机 TeX 工具链。
 - `make manuscript`：编译手稿。
+- `make manuscript-diff`：生成 base ref 到当前 head 的修订痕迹 PDF。
 - `make check-tex-style`：检查明显的一行多句问题。
 - `make prepare-elsevier-submission`：准备提交目录。
 
@@ -21,3 +22,11 @@
 - 段落之间空一行。
 - 手稿图放在 `docs/writing/manuscript/figures/`。
 - 手稿表放在 `docs/writing/manuscript/tables/`。
+
+## GitHub 协作
+
+- 批注用 Issue，并贴到正文具体行或行范围的 GitHub permalink。
+- 实际改写正文用小 PR，并通过 PR review 审查。
+- PR 自动上传 `main.pdf`。
+- pull request 自动上传 `manuscript-diff.pdf`，用于给非 Git 用户查看修订痕迹。
+- 详细规则见 @docs/agents/paper-collaboration-workflow.md。

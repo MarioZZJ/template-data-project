@@ -21,6 +21,7 @@
 - @docs/agents/experiment-workflow.md：实验记录和推进规则。
 - @docs/agents/writing-and-figure-style.md：科学写作和绘图风格。
 - @docs/agents/tex-manuscript-workflow.md：Elsevier Harvard TeX 工作流。
+- @docs/agents/paper-collaboration-workflow.md：GitHub 论文批注、修改、PR review 和 PDF artifact 规则。
 - @docs/agents/dbschema/：数据库 schema 索引和表说明。
 
 ## 规则
