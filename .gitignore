@@ -230,9 +230,11 @@ $RECYCLE.BIN/
 # Project specific
 # 数据文件（保留目录结构，忽略实际数据文件）
 data/raw/*
+data/interim/*
 data/processed/*
 data/external/*
 !data/raw/.gitkeep
+!data/interim/.gitkeep
 !data/processed/.gitkeep
 !data/external/.gitkeep
 
@@ -252,3 +254,19 @@ models/
 *.hdf5
 *.pkl
 *.pickle
+
+# TeX build outputs
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.run.xml
+*.bcf
+docs/writing/manuscript/build/

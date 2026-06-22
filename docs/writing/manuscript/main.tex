@@ -1,0 +1,76 @@
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\biboptions{round,authoryear}
+\journal{Journal Name}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Project Title}
+
+\author[inst1]{First Author}
+\author[inst1]{Second Author}
+
+\affiliation[inst1]{
+  organization={Institution Name},
+  city={City},
+  country={Country}
+}
+
+\begin{abstract}
+This template provides a reproducible starting point for a data or research manuscript.
+
+Each sentence is written on its own line to make version history easier to review.
+
+The abstract should state the problem, approach, main result, and implication without unsupported claims.
+\end{abstract}
+
+\begin{keyword}
+keyword one \sep keyword two \sep keyword three
+\end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}
+
+This section introduces the research problem and explains why it matters.
+
+The opening paragraph should establish context without overstating novelty.
+
+A placeholder reference can be cited with \citet{placeholder2026} while the project replaces the bibliography.
+
+\section{Methods}
+
+This section describes the data, preprocessing, models, experiments, and evaluation protocol.
+
+The methods should be detailed enough for another researcher to reproduce the main results.
+
+\section{Results}
+
+This section reports the main empirical findings.
+
+Each result should connect to a figure, table, or reproducible experiment artifact.
+
+\section{Discussion}
+
+This section interprets the results and explains their limitations.
+
+Separate direct observations from broader implications.
+
+\section{Conclusion}
+
+This section summarizes the main contribution and the most important evidence.
+
+It should avoid introducing new results.
+
+\bibliographystyle{elsarticle-harv}
+\bibliography{references}
+
+\end{document}

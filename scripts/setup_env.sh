@@ -1,9 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Python数据分析项目初始化脚本
 # 交互式收集项目信息，配置环境
 
-set -e
+set -euo pipefail
+
+sedi() {
+    if sed --version >/dev/null 2>&1; then
+        sed -i "$@"
+    else
+        local expr="$1"
+        local file="$2"
+        sed -i '' "$expr" "$file"
+    fi
+}
 
 echo "=============================="
 echo "  Python 数据分析项目初始化"
@@ -51,31 +61,30 @@ fi
 
 echo ""
 echo "📝 更新 pyproject.toml..."
-sed -i "s|name = \"python-data-analysis-template\"|name = \"$PACKAGE_NAME\"|" pyproject.toml
-sed -i "s|version = \"0.1.0\"|version = \"$PROJECT_VERSION\"|" pyproject.toml
-sed -i "s|description = \"Python数据分析项目模板\"|description = \"$PROJECT_DESC\"|" pyproject.toml
-sed -i "s|Your Name|$AUTHOR_NAME|g" pyproject.toml
-sed -i "s|your.email@example.com|$AUTHOR_EMAIL|g" pyproject.toml
+sedi "s|name = \"python-data-analysis-template\"|name = \"$PACKAGE_NAME\"|" pyproject.toml
+sedi "s|version = \"0.1.0\"|version = \"$PROJECT_VERSION\"|" pyproject.toml
+sedi "s|description = \"Python数据分析项目模板\"|description = \"$PROJECT_DESC\"|" pyproject.toml
+sedi "s|Your Name|$AUTHOR_NAME|g" pyproject.toml
+sedi "s|your.email@example.com|$AUTHOR_EMAIL|g" pyproject.toml
 
 echo "📝 更新 src/__init__.py..."
-sed -i "s|__version__ = \"0.1.0\"|__version__ = \"$PROJECT_VERSION\"|" src/__init__.py
-sed -i "s|__author__ = \"Your Name\"|__author__ = \"$AUTHOR_NAME\"|" src/__init__.py
-sed -i "s|__email__ = \"your.email@example.com\"|__email__ = \"$AUTHOR_EMAIL\"|" src/__init__.py
+sedi "s|__version__ = \"0.1.0\"|__version__ = \"$PROJECT_VERSION\"|" src/__init__.py
+sedi "s|__author__ = \"Your Name\"|__author__ = \"$AUTHOR_NAME\"|" src/__init__.py
+sedi "s|__email__ = \"your.email@example.com\"|__email__ = \"$AUTHOR_EMAIL\"|" src/__init__.py
 
 echo "📝 准备 .env 文件..."
 if [ ! -f ".env" ]; then
     cp .env.example .env
 fi
-sed -i "s|PROJECT_NAME=python-data-analysis-template|PROJECT_NAME=$PACKAGE_NAME|" .env
-sed -i "s|PROJECT_VERSION=0.1.0|PROJECT_VERSION=$PROJECT_VERSION|" .env
+sedi "s|PROJECT_NAME=python-data-analysis-template|PROJECT_NAME=$PACKAGE_NAME|" .env
+sedi "s|PROJECT_VERSION=0.1.0|PROJECT_VERSION=$PROJECT_VERSION|" .env
 
 # ─── 配置虚拟环境 ─────────────────────────────────────────────────────────────
 
 if ! command -v uv &> /dev/null; then
-    echo "❌ uv 未安装，正在安装..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    source ~/.bashrc
-    echo "✅ uv 安装完成"
+    echo "❌ uv 未安装。请先安装 uv 后重新运行本脚本。"
+    echo "   https://docs.astral.sh/uv/getting-started/installation/"
+    exit 1
 fi
 
 if [ ! -d ".venv" ]; then
@@ -106,11 +115,17 @@ echo "  source .venv/bin/activate   # 激活虚拟环境"
 echo "  jupyter lab                 # 启动 Jupyter Lab"
 echo "  uv add <package>            # 添加依赖"
 echo ""
+echo "🧭 下一步文档："
+echo "  docs/plans/research-plan.md   # 写研究问题、数据来源、初始方法和第一步实验"
+echo "  docs/project-preferences.md   # 写环境、工具、数据访问和操作偏好"
+echo "  DASHBOARD.md                  # 更新当前可推进的实验状态"
+echo ""
 echo "📁 项目结构："
 echo "├── data/         原始/处理后/外部数据"
 echo "├── outputs/      图表和表格输出"
-echo "├── docs/         过程文档"
-echo "├── agents/       Agent 提示词和参考文档"
-echo "├── src/utils/    工具函数"
-echo "├── scripts/      脚本文件"
+echo "├── docs/plans/   研究计划"
+echo "├── docs/agents/  Agent 文档和数据库 schema"
+echo "├── docs/writing/ TeX 写作工作区"
+echo "├── src/          可复用功能模块"
+echo "├── scripts/      集成化项目脚本"
 echo "└── .env          环境变量（勿提交）"
