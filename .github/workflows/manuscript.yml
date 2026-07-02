@@ -2,63 +2,181 @@ name: Manuscript
 
 on:
   pull_request:
-  push:
-    branches:
-      - master
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - docs/writing/manuscript/**
+      - .github/workflows/manuscript.yml
+      - scripts/build-manuscript-diff.sh
+  release:
+    types:
+      - published
 
 jobs:
-  build:
-    name: Build manuscript PDFs
+  build-diff-pdf:
+    name: Build manuscript diff PDF
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Checkout PR head
+        uses: actions/checkout@v7
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Fetch pull request base
-        if: github.event_name == 'pull_request'
-        run: git fetch --no-tags origin ${{ github.event.pull_request.base.sha }}
+      - name: Fetch PR base commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git remote add base "https://github.com/${GITHUB_REPOSITORY}.git" 2>/dev/null || \
+            git remote set-url base "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune base "${BASE_SHA}"
+          git cat-file -e "${BASE_SHA}^{commit}"
+          git cat-file -e "${HEAD_SHA}^{commit}"
 
       - name: Check TeX sentence-line style
         run: make check-tex-style
 
-      - name: Build main PDF
-        uses: xu-cheng/texlive-action@v3
-        with:
-          os: debian
-          run: |
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get update -y
-            apt-get install -y make git
-            make manuscript
+      - name: Install TeX dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk \
+            latexdiff \
+            lmodern \
+            make \
+            poppler-utils \
+            texlive-extra-utils \
+            texlive-fonts-recommended \
+            texlive-latex-base \
+            texlive-latex-extra \
+            texlive-latex-recommended \
+            texlive-publishers
 
-      - name: Build PR diff PDF
-        if: github.event_name == 'pull_request'
-        uses: xu-cheng/texlive-action@v3
-        with:
-          os: debian
-          run: |
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get update -y
-            apt-get install -y make git
-            BASE_REF="${{ github.event.pull_request.base.sha }}" \
-            HEAD_REF="HEAD" \
-            make manuscript-diff
+      - name: Build diff PDF
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mkdir -p artifacts
+          scripts/build-manuscript-diff.sh artifacts/manuscript-diff.pdf
 
-      - name: Upload manuscript PDFs
-        uses: actions/upload-artifact@v4
+      - name: Upload diff PDF artifact
+        id: upload
+        uses: actions/upload-artifact@v7
         with:
-          name: manuscript-pdfs
-          path: |
-            docs/writing/manuscript/build/main.pdf
-            docs/writing/manuscript/build/manuscript-diff.pdf
+          name: manuscript-diff.pdf
+          path: artifacts/manuscript-diff.pdf
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
+          archive: false
+
+      - name: Comment artifact link on PR
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v9
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const marker = '<!-- manuscript-diff-artifact -->';
+            const artifactUrl = process.env.ARTIFACT_URL;
+            const baseSha = process.env.BASE_SHA;
+            const headSha = process.env.HEAD_SHA;
+            const body = [
+              marker,
+              '### Manuscript diff PDF',
+              '',
+              'The PR diff PDF was generated successfully.',
+              '',
+              `[Download manuscript-diff.pdf](${artifactUrl})`,
+              '',
+              `Base: \`${baseSha.slice(0, 12)}\``,
+              `Head: \`${headSha.slice(0, 12)}\``,
+              'Retention: 14 days',
+              '',
+              'GitHub login may be required to download workflow artifacts.',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find((comment) =>
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.includes(marker)
+            );
+
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+  attach-main-pdf-to-release:
+    name: Attach main PDF to release
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Install TeX dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk \
+            lmodern \
+            make \
+            poppler-utils \
+            texlive-extra-utils \
+            texlive-fonts-recommended \
+            texlive-latex-base \
+            texlive-latex-extra \
+            texlive-latex-recommended \
+            texlive-publishers
+
+      - name: Build main PDF
+        run: |
+          make manuscript
+          test -s docs/writing/manuscript/build/main.pdf
+          pdfinfo docs/writing/manuscript/build/main.pdf
+
+      - name: Upload main PDF release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "${RELEASE_TAG}" docs/writing/manuscript/build/main.pdf --clobber --repo "${GITHUB_REPOSITORY}"

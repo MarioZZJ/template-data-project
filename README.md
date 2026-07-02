@@ -64,7 +64,7 @@ make prepare-elsevier-submission
 
 GitHub 论文协作规则见 @docs/agents/paper-collaboration-workflow.md。
 批注用 Issue 加正文 permalink，实际改写用小 PR。
-PR 会自动上传 `main.pdf`；pull request 还会上传 `manuscript-diff.pdf`。
+PR 会自动生成 `manuscript-diff.pdf` 并评论下载入口；Release 会自动附加 `main.pdf`。
 
 ## 依赖管理
 

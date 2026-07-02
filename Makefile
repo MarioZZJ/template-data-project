@@ -17,7 +17,19 @@ manuscript:
 	@cd docs/writing/manuscript && latexmk -pdf -r ../../../.latexmkrc main.tex
 
 manuscript-diff:
-	@bash scripts/build-manuscript-diff.sh
+	@base="$${BASE_SHA:-$${BASE_REF:-}}"; \
+	if [ -z "$$base" ]; then \
+		base="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"; \
+	fi; \
+	if [ -z "$$base" ] && git rev-parse --verify origin/master >/dev/null 2>&1; then \
+		base="origin/master"; \
+	fi; \
+	if [ -z "$$base" ] && git rev-parse --verify origin/main >/dev/null 2>&1; then \
+		base="origin/main"; \
+	fi; \
+	BASE_SHA="$${base:-HEAD~1}" \
+	HEAD_SHA="$${HEAD_SHA:-$${HEAD_REF:-HEAD}}" \
+	scripts/build-manuscript-diff.sh docs/writing/manuscript/build/manuscript-diff.pdf
 
 clean-manuscript:
 	@cd docs/writing/manuscript && latexmk -C -r ../../../.latexmkrc main.tex || true

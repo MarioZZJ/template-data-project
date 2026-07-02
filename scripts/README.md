@@ -13,4 +13,4 @@
 
 现有手稿脚本：
 
-- `build-manuscript-diff.sh`：用 `git-latexdiff` 生成 `docs/writing/manuscript/build/manuscript-diff.pdf`。
+- `build-manuscript-diff.sh`：用 `git-latexdiff` 生成修订痕迹 PDF；直接调用时传入输出 PDF 路径，并设置 `BASE_SHA` 和 `HEAD_SHA`。

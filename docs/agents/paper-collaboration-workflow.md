@@ -58,12 +58,14 @@ PR review comments 用于审查本次改动。
 
 ## 自动 PDF 产物
 
-GitHub Actions 会编译当前 PR 的 `main.pdf`。
-PR 事件还会用 `git-latexdiff` 对比 base branch 和 PR head，生成 `manuscript-diff.pdf`。
+pull request 事件会用 `git-latexdiff` 对比 base branch 和 PR head，生成 `manuscript-diff.pdf`。
+触发条件与稿件相关改动绑定：PR 打开、重开、同步或转为 ready for review，且改动涉及手稿目录、workflow 或 diff 脚本。
 
-这两个 PDF 会作为 workflow artifact 上传。
-`main.pdf` 用于阅读当前完整稿。
+`manuscript-diff.pdf` 会作为 workflow artifact 上传，并由机器人在 PR 中更新同一条下载评论。
 `manuscript-diff.pdf` 用于给非 Git 用户或导师查看带修订痕迹的版本。
+
+发布 GitHub Release 时，GitHub Actions 会编译 `main.pdf` 并作为 release asset 上传。
+`main.pdf` 用于阅读发布版本的完整稿。
 
 `git-latexdiff` PDF 是沟通材料，不是新的事实来源。
 正文仍以 TeX 源文件和 PR diff 为准。

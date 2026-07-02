@@ -27,6 +27,6 @@
 
 - 批注用 Issue，并贴到正文具体行或行范围的 GitHub permalink。
 - 实际改写正文用小 PR，并通过 PR review 审查。
-- PR 自动上传 `main.pdf`。
-- pull request 自动上传 `manuscript-diff.pdf`，用于给非 Git 用户查看修订痕迹。
+- pull request 自动上传 `manuscript-diff.pdf`，并在 PR 中更新下载评论。
+- GitHub Release 自动编译并附加 `main.pdf`。
 - 详细规则见 @docs/agents/paper-collaboration-workflow.md。

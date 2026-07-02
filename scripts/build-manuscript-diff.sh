@@ -1,47 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -n "${GITHUB_WORKSPACE:-}" ]; then
-  git config --global --add safe.directory "$GITHUB_WORKSPACE" >/dev/null 2>&1 || true
+if [[ $# -ne 1 ]]; then
+  echo "usage: $0 OUTPUT_PDF" >&2
+  exit 2
 fi
+
+: "${BASE_SHA:?BASE_SHA is required}"
+: "${HEAD_SHA:?HEAD_SHA is required}"
+
+command -v git-latexdiff >/dev/null
+command -v pdfinfo >/dev/null
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
-MAIN_TEX="${MAIN_TEX:-docs/writing/manuscript/main.tex}"
-BUILD_DIR="${BUILD_DIR:-docs/writing/manuscript/build}"
-OUTPUT_PDF="${OUTPUT_PDF:-$BUILD_DIR/manuscript-diff.pdf}"
+mkdir -p "$(dirname "$1")"
+OUT_DIR="$(cd "$(dirname "$1")" && pwd)"
+OUT="$OUT_DIR/$(basename "$1")"
 
-if ! command -v git-latexdiff >/dev/null 2>&1; then
-  echo "git-latexdiff not found. Install TeX Live tools that provide git-latexdiff."
-  exit 127
+if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
+  git config --global --add safe.directory "$GITHUB_WORKSPACE"
 fi
 
-if [ -z "${BASE_REF:-}" ]; then
-  if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
-    BASE_REF="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}')"
-  elif git rev-parse --verify origin/master >/dev/null 2>&1; then
-    BASE_REF="origin/master"
-  else
-    BASE_REF="HEAD~1"
-  fi
-fi
-
-HEAD_REF="${HEAD_REF:-HEAD}"
-
-mkdir -p "$BUILD_DIR"
-
-echo "Building manuscript diff:"
-echo "  base: $BASE_REF"
-echo "  head: $HEAD_REF"
-echo "  main: $MAIN_TEX"
-echo "  out:  $OUTPUT_PDF"
+BASE_COMMIT="$(git rev-parse "${BASE_SHA}^{commit}")"
+HEAD_COMMIT="$(git rev-parse "${HEAD_SHA}^{commit}")"
 
 git-latexdiff \
   --no-view \
-  --whole-tree \
+  --ignore-makefile \
   --latexmk \
-  --ignore-latex-errors \
-  --main "$MAIN_TEX" \
-  -o "$OUTPUT_PDF" \
-  "$BASE_REF" "$HEAD_REF"
+  --build-dir docs/writing/manuscript/build \
+  --main docs/writing/manuscript/main.tex \
+  --prepare 'cp .latexmkrc docs/writing/manuscript/.latexmkrc' \
+  --output "$OUT" \
+  "$BASE_COMMIT" "$HEAD_COMMIT" \
+  --type=UNDERLINE \
+  --graphics-markup=none \
+  --disable-citation-markup \
+  --math-markup=whole
+
+test -s "$OUT"
+pdfinfo "$OUT"
