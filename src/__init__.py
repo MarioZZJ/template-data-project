@@ -1,5 +1,5 @@
 """Python data/research project source package."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
