@@ -33,13 +33,13 @@ make init-tex
 
 | 顺序 | 状态 | 命令 | 输入 | 输出 | 说明 |
 |---:|---|---|---|---|---|
-| 1 | `计划` | `bash src/001-download_titanic_data.sh` | Kaggle competition `titanic` | `data/raw/titanic/train.csv`、`test.csv` | 先接受规则并完成认证；不覆盖已有原始文件 |
-| 2 | `计划` | `uv run python src/010-prepare_analysis_data.py` | `data/raw/titanic/train.csv`、`test.csv` | `data/processed/titanic-analysis.csv`、数据质量中间表 | 构造 `FamilySize`、`TravelAlone` 和年龄缺失标记 |
-| 3 | `计划` | `uv run python src/020-descriptive_statistics.py` | 分析数据 | 描述统计与分组生存率中间表 | 按性别、舱位、年龄和家庭结构汇总 |
-| 4 | `计划` | `uv run python src/030-logistic_regression.py` | 分析数据 | Logistic 回归与年龄缺失敏感性中间表 | 报告优势比、置信区间和必要统计量 |
-| 5 | `计划` | `uv run python src/040-model_diagnostics.py` | 分析数据 | 诊断与分层交叉验证中间表 | 固定随机种子，报告 ROC AUC 与 Brier score |
-| 6 | `计划` | `uv run python src/050-make_figures.py` | 分组生存率、模型结果 | `outputs/figures/` 正式图件 | 生成分组生存率图与优势比图 |
-| 7 | `计划` | `uv run python src/060-make_tables.py` | 各步骤中间表 | `outputs/tables/` 正式表格 | 输出稳定语义名称的 CSV 和 TeX 表 |
+| 1 | `已验证` | `KAGGLE_STORAGE_TLS_HOST=storage.cloud.google.com bash src/001-download_titanic_data.sh` | Kaggle competition `titanic` | `data/raw/titanic/train.csv`、`test.csv` | 默认先用官方 CLI；当前网络对签名存储地址使用受信任 TLS 主机回退，不覆盖已有文件 |
+| 2 | `已验证` | `uv run python src/010-prepare_analysis_data.py` | 两份官方原始 CSV | `data/processed/titanic-analysis.csv`、`data/interim/data-quality-summary.csv` | 核验 891×12 与 418×11，构造家庭和年龄缺失变量 |
+| 3 | `已验证` | `uv run python src/020-descriptive_statistics.py` | 分析数据 | `data/interim/descriptive-statistics.csv`、`group-survival-rates.csv` | 按性别、舱位、年龄和家庭结构汇总 |
+| 4 | `已验证` | `uv run python src/030-logistic_regression.py` | 分析数据 | 回归、模型拟合、模型规格和设计矩阵中间表 | 主模型使用中位数年龄与缺失指示，另做 714 人完整年龄敏感性 |
+| 5 | `已验证` | `uv run python src/040-model_diagnostics.py` | 分析数据、主模型设计矩阵 | 性能、共线性、影响点和校准中间表 | 五折分层验证，随机种子 `20260810` |
+| 6 | `已验证` | `uv run python src/050-make_figures.py` | 分组生存率、模型结果 | 两张 `outputs/figures/*.pdf` | 生成分组生存率图与主模型优势比图 |
+| 7 | `已验证` | `uv run python src/060-make_tables.py` | 各步骤中间表 | `outputs/tables/` 中 17 个 CSV/TeX 文件 | 生成数据质量、描述、回归、敏感性、拟合、性能和诊断表 |
 
 不提供一键运行全部研究的入口。
 研究者按表中顺序逐项运行和核验。
@@ -60,6 +60,15 @@ make init-tex
 
 `DASHBOARD.md` 是项目状态的唯一真源。
 正式图件和表格只保存在 `outputs/`，实验目录和手稿目录不维护第二份副本。
+
+## 当前初步结果
+
+- `train.csv` 有 891 名乘客，生存比例为 38.4%；年龄缺失 177 人。
+- 观察生存率为女性 74.2%、男性 18.9%；一、二、三等舱分别为 63.0%、47.3%、24.2%。
+- 调整其他模型变量后，女性相对男性的生存优势比为 14.89（95% CI 10.03--22.08）；一等舱相对三等舱为 5.54（2.72--11.29）。
+- 年龄每增加 10 年的优势比为 0.68（0.58--0.79），家庭每增加 1 人为 0.74（0.63--0.86）。
+- 五折分层交叉验证的样本外 ROC AUC 为 0.851，Brier score 为 0.144；这些指标只描述 `train.csv` 内部验证，不是 Kaggle 排名。
+- 结果是观测数据中的条件关联，不支持因果解释；影响点和年龄缺失敏感性见正式诊断表。
 
 ## TeX 与 Elsevier
 

@@ -33,8 +33,17 @@
 
 ## 当前项目配置
 
-本项目采用平铺的三位编号源码序列，计划覆盖官方数据下载、分析数据构造、描述统计、Logistic 回归、模型诊断、正式图件和正式表格。
-初始化提交只在根 README 登记计划，不创建空编号脚本；实现时使用 `uv run python <path>` 或 `bash <path>` 按路径执行。
+本项目采用平铺的三位编号源码序列：
+
+- `001-download_titanic_data.sh`：官方文件清单、下载、覆盖保护和 SHA-256。
+- `010-prepare_analysis_data.py`：数据质量、结构兼容性和家庭/年龄变量。
+- `020-descriptive_statistics.py`：描述统计、分组生存率和 Wilson 区间。
+- `030-logistic_regression.py`：主模型与完整年龄样本敏感性。
+- `040-model_diagnostics.py`：VIF、Cook 距离、校准和五折分层验证。
+- `050-make_figures.py`：两张正式 PDF 图。
+- `060-make_tables.py`：正式 CSV 与 TeX 表。
+
+所有文件按路径执行；完整命令、输入和输出以根 README 为准。
 
 ## 维护规则
 

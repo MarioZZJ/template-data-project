@@ -1,0 +1,14 @@
+diagnostic,term,value,reference,flag,detail
+Variance inflation factor,Female,1.130995655,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,Pclass_1,2.887420535,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,Pclass_2,1.296782698,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,Age_per_10y,1.221077306,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,FamilySize,1.608381041,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,LogFare,2.981274536,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,Embarked_C,1.167473606,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,Embarked_Q,1.227613408,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Variance inflation factor,AgeMissing,1.190179303,Review values >= 5,OK,Auxiliary VIF regression includes an intercept
+Maximum Cook's distance,all observations,0.01648162495,4/n = 0.0044893378,REVIEW,54 observations exceed 4/n
+OOF calibration intercept,cross-validated probabilities,-0.01258787874,Ideal 0,INFO,Estimated from out-of-fold probabilities
+OOF calibration slope,cross-validated probabilities,0.996366462,Ideal 1,INFO,Estimated from out-of-fold probabilities
+Observed survival rate,all observations,0.3838383838,Compare with mean OOF probability,INFO,Mean OOF probability = 0.38543788

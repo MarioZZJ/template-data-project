@@ -20,8 +20,8 @@
 
 ## 当前项目配置
 
-计划正式图件为 `survival-rates-by-characteristics.pdf` 和 `main-model-odds-ratios.pdf`。
-计划正式表格至少包括 `descriptive-statistics`、`logistic-regression-results` 和 `model-performance` 的 CSV 与 TeX 版本；诊断和年龄缺失敏感性按实际分析增加。
+正式图件为 `survival-rates-by-characteristics.pdf` 和 `main-model-odds-ratios.pdf`，由 `src/050-make_figures.py` 生成。
+正式表格包括数据质量、描述统计、分组生存率、回归、年龄缺失敏感性、模型拟合、性能、诊断和影响观测；除影响观测外均提供 CSV 与 TeX 版本，由 `src/060-make_tables.py` 生成。
 所有名称使用稳定语义，不包含运行日期或 `final`、`latest` 后缀。
 
 ## 维护规则

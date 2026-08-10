@@ -1,0 +1,4 @@
+metric,out_of_fold_estimate,fold_mean,fold_sd,folds,random_seed,preferred_direction
+ROC AUC,0.8505842627,0.8525951294,0.01879384179,5,20260810,higher
+Brier score,0.1440352188,0.1440214765,0.01232656163,5,20260810,lower
+Log loss,0.4512813367,0.4512589982,0.03003935019,5,20260810,lower

@@ -1,0 +1,27 @@
+\begin{table}[htbp]
+\centering
+\caption{Main-model collinearity, influence, and calibration diagnostics.}
+\label{tab:model-diagnostics}
+\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llrll}
+\toprule
+Diagnostic & Term & Value & Reference & Flag \\
+\midrule
+Variance inflation factor & Female & 1.131 & Review values >= 5 & OK \\
+Variance inflation factor & Pclass\_1 & 2.887 & Review values >= 5 & OK \\
+Variance inflation factor & Pclass\_2 & 1.297 & Review values >= 5 & OK \\
+Variance inflation factor & Age\_per\_10y & 1.221 & Review values >= 5 & OK \\
+Variance inflation factor & FamilySize & 1.608 & Review values >= 5 & OK \\
+Variance inflation factor & LogFare & 2.981 & Review values >= 5 & OK \\
+Variance inflation factor & Embarked\_C & 1.167 & Review values >= 5 & OK \\
+Variance inflation factor & Embarked\_Q & 1.228 & Review values >= 5 & OK \\
+Variance inflation factor & AgeMissing & 1.190 & Review values >= 5 & OK \\
+Maximum Cook's distance & all observations & 0.016 & 4/n = 0.0044893378 & REVIEW \\
+OOF calibration intercept & cross-validated probabilities & -0.013 & Ideal 0 & INFO \\
+OOF calibration slope & cross-validated probabilities & 0.996 & Ideal 1 & INFO \\
+Observed survival rate & all observations & 0.384 & Compare with mean OOF probability & INFO \\
+\bottomrule
+\end{tabular}
+}
+\end{table}

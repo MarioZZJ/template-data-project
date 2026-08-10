@@ -1,0 +1,26 @@
+\begin{table}[htbp]
+\centering
+\caption{Titanic source-data quality summary.}
+\label{tab:data-quality}
+\small
+\begin{tabular}{lllrl}
+\toprule
+Dataset & Metric & Variable & Value & Status \\
+\midrule
+train.csv & row\_count & all & 891 & INFO \\
+train.csv & column\_count & all & 12 & INFO \\
+train.csv & duplicate\_rows & all & 0 & PASS \\
+train.csv & unique\_key & PassengerId & 891 & PASS \\
+train.csv & missing\_count & Age & 177 & INFO \\
+train.csv & missing\_count & Cabin & 687 & INFO \\
+train.csv & missing\_count & Embarked & 2 & INFO \\
+test.csv & row\_count & all & 418 & INFO \\
+test.csv & column\_count & all & 11 & INFO \\
+test.csv & duplicate\_rows & all & 0 & PASS \\
+test.csv & unique\_key & PassengerId & 418 & PASS \\
+test.csv & missing\_count & Age & 86 & INFO \\
+test.csv & missing\_count & Fare & 1 & INFO \\
+test.csv & missing\_count & Cabin & 327 & INFO \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,72 @@
+dataset,metric,variable,value,status,detail
+train.csv,row_count,all,891,INFO,Source rows
+train.csv,column_count,all,12,INFO,Source columns
+train.csv,duplicate_rows,all,0,PASS,Exact duplicate source rows
+train.csv,unique_key,PassengerId,891,PASS,PassengerId must be nonmissing and unique
+train.csv,dtype,PassengerId,int64,INFO,Pandas source dtype
+train.csv,missing_count,PassengerId,0,INFO,0.000000 of rows
+train.csv,dtype,Survived,int64,INFO,Pandas source dtype
+train.csv,missing_count,Survived,0,INFO,0.000000 of rows
+train.csv,dtype,Pclass,int64,INFO,Pandas source dtype
+train.csv,missing_count,Pclass,0,INFO,0.000000 of rows
+train.csv,dtype,Name,str,INFO,Pandas source dtype
+train.csv,missing_count,Name,0,INFO,0.000000 of rows
+train.csv,dtype,Sex,str,INFO,Pandas source dtype
+train.csv,missing_count,Sex,0,INFO,0.000000 of rows
+train.csv,dtype,Age,float64,INFO,Pandas source dtype
+train.csv,missing_count,Age,177,INFO,0.198653 of rows
+train.csv,dtype,SibSp,int64,INFO,Pandas source dtype
+train.csv,missing_count,SibSp,0,INFO,0.000000 of rows
+train.csv,dtype,Parch,int64,INFO,Pandas source dtype
+train.csv,missing_count,Parch,0,INFO,0.000000 of rows
+train.csv,dtype,Ticket,str,INFO,Pandas source dtype
+train.csv,missing_count,Ticket,0,INFO,0.000000 of rows
+train.csv,dtype,Fare,float64,INFO,Pandas source dtype
+train.csv,missing_count,Fare,0,INFO,0.000000 of rows
+train.csv,dtype,Cabin,str,INFO,Pandas source dtype
+train.csv,missing_count,Cabin,687,INFO,0.771044 of rows
+train.csv,dtype,Embarked,str,INFO,Pandas source dtype
+train.csv,missing_count,Embarked,2,INFO,0.002245 of rows
+train.csv,invalid_value_count,Survived,0,PASS,"Allowed values are 0, 1"
+train.csv,invalid_value_count,Pclass,0,PASS,"Allowed values are 1, 2, 3"
+train.csv,invalid_value_count,Sex,0,PASS,"Allowed values are female, male"
+train.csv,invalid_value_count,Age,0,PASS,Nonmissing age must be 0--100
+train.csv,invalid_value_count,SibSp,0,PASS,Must be a nonnegative integer
+train.csv,invalid_value_count,Parch,0,PASS,Must be a nonnegative integer
+train.csv,invalid_value_count,Fare,0,PASS,Nonmissing fare must be nonnegative
+train.csv,invalid_value_count,Embarked,0,PASS,"Allowed nonmissing values are C, Q, S"
+test.csv,row_count,all,418,INFO,Source rows
+test.csv,column_count,all,11,INFO,Source columns
+test.csv,duplicate_rows,all,0,PASS,Exact duplicate source rows
+test.csv,unique_key,PassengerId,418,PASS,PassengerId must be nonmissing and unique
+test.csv,dtype,PassengerId,int64,INFO,Pandas source dtype
+test.csv,missing_count,PassengerId,0,INFO,0.000000 of rows
+test.csv,dtype,Pclass,int64,INFO,Pandas source dtype
+test.csv,missing_count,Pclass,0,INFO,0.000000 of rows
+test.csv,dtype,Name,str,INFO,Pandas source dtype
+test.csv,missing_count,Name,0,INFO,0.000000 of rows
+test.csv,dtype,Sex,str,INFO,Pandas source dtype
+test.csv,missing_count,Sex,0,INFO,0.000000 of rows
+test.csv,dtype,Age,float64,INFO,Pandas source dtype
+test.csv,missing_count,Age,86,INFO,0.205742 of rows
+test.csv,dtype,SibSp,int64,INFO,Pandas source dtype
+test.csv,missing_count,SibSp,0,INFO,0.000000 of rows
+test.csv,dtype,Parch,int64,INFO,Pandas source dtype
+test.csv,missing_count,Parch,0,INFO,0.000000 of rows
+test.csv,dtype,Ticket,str,INFO,Pandas source dtype
+test.csv,missing_count,Ticket,0,INFO,0.000000 of rows
+test.csv,dtype,Fare,float64,INFO,Pandas source dtype
+test.csv,missing_count,Fare,1,INFO,0.002392 of rows
+test.csv,dtype,Cabin,str,INFO,Pandas source dtype
+test.csv,missing_count,Cabin,327,INFO,0.782297 of rows
+test.csv,dtype,Embarked,str,INFO,Pandas source dtype
+test.csv,missing_count,Embarked,0,INFO,0.000000 of rows
+test.csv,invalid_value_count,Pclass,0,PASS,"Allowed values are 1, 2, 3"
+test.csv,invalid_value_count,Sex,0,PASS,"Allowed values are female, male"
+test.csv,invalid_value_count,Age,0,PASS,Nonmissing age must be 0--100
+test.csv,invalid_value_count,SibSp,0,PASS,Must be a nonnegative integer
+test.csv,invalid_value_count,Parch,0,PASS,Must be a nonnegative integer
+test.csv,invalid_value_count,Fare,0,PASS,Nonmissing fare must be nonnegative
+test.csv,invalid_value_count,Embarked,0,PASS,"Allowed nonmissing values are C, Q, S"
+train/test,schema_compatibility,columns,1,PASS,test.csv columns must equal train.csv columns except Survived
+train/test,disjoint_keys,PassengerId,1,PASS,Train and test PassengerId values must not overlap

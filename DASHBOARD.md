@@ -9,7 +9,7 @@
 
 | ID | 状态 | 研究问题/任务 | 当前证据 | 下一步 | 相关脚本 | 正式输出 |
 |---|---|---|---|---|---|---|
-| `DATA-001` | `TODO_READY` | 获取并核验官方 Titanic 数据 | 竞赛 slug、预期文件和安全获取方式已登记；规则接受与认证尚待命令验证 | 执行数据获取脚本并记录大小与 SHA-256 | `src/001-download_titanic_data.sh`（待建立） | — |
-| `PREP-010` | `BLOCKED` | 构造分析数据并完成质量检查 | blocked_by: `DATA-001` | 数据到位后构造家庭同行变量并核验样本 | `src/010-prepare_analysis_data.py`（待建立） | — |
-| `ANALYSIS-020` | `BLOCKED` | 描述性统计、Logistic 回归、诊断和交叉验证 | blocked_by: `PREP-010` | 分析数据完成后按 README 顺序运行 | `src/020-` 至 `060-`（待建立） | 计划见 `outputs/README.md` |
-| `REPORT-001` | `BLOCKED` | 完成轻量 TeX 研究过程汇报 | blocked_by: `ANALYSIS-020` | 正式图表完成后更新并编译主 TeX 文档 | `docs/writing/manuscript/main.tex` | `docs/writing/manuscript/build/main.pdf`（生成目录） |
+| `DATA-001` | `DONE` | 获取并核验官方 Titanic 数据 | `train.csv` 61,194 字节、SHA-256 `7d118f…010e9f6f`；`test.csv` 28,629 字节、`56023b…dd7dd52b2`；均被忽略且未跟踪 | 除非官方版本变化，不覆盖原始快照 | `src/001-download_titanic_data.sh` | `data/raw/titanic/README.md` |
+| `PREP-010` | `DONE` | 构造分析数据并完成质量检查 | `train.csv` 891×12、`test.csv` 418×11；唯一键、重复、类型和取值检查无失败；训练集年龄缺失 177 | 数据版本变化时从原始快照重建 | `src/010-prepare_analysis_data.py` | `outputs/tables/data-quality-summary.csv` |
+| `ANALYSIS-020` | `DONE` | 描述性统计、Logistic 回归、诊断和交叉验证 | 女性优势比 14.89（10.03--22.08），年龄每 10 年 0.68（0.58--0.79）；OOF AUC 0.851、Brier 0.144；VIF 均低于 3，54 个观测超过 Cook 阈值 | 在过程汇报中保留关联、缺失和影响点边界 | `src/020-` 至 `060-` | `outputs/figures/`、`outputs/tables/` |
+| `REPORT-001` | `TODO_READY` | 完成轻量 TeX 研究过程汇报 | 正式图表与表格已经生成并可重建 | 更新主 TeX 文档，直接引用中央 outputs 并编译非空 PDF | `docs/writing/manuscript/main.tex` | `docs/writing/manuscript/build/main.pdf`（生成目录） |

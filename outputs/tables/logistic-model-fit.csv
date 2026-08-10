@@ -1,0 +1,3 @@
+model,n,survived_n,df_model,log_likelihood,aic,bic,mcfadden_pseudo_r2,likelihood_ratio_p_value,converged
+Main model,891,342,9,-389.9406344,799.8812688,847.8047131,0.3427902981,4.910935639e-82,True
+Complete-age sensitivity,714,290,8,-317.4178305,652.835661,693.9736076,0.3418090689,1.957929143e-66,True

@@ -5,7 +5,7 @@
 | 项目 | 当前选择 | 备注 |
 |---|---|---|
 | Python | Python 3.12，`uv 0.9.15` | 使用 `uv sync` 与 `uv run`，不作为 package 安装 |
-| 数据获取 | 外部 Kaggle CLI | 版本与认证在首次下载时记录 |
+| 数据获取 | 外部 Kaggle CLI 2.2.4 + OAuth | 当前透明代理可访问 API，但会重置 `storage.googleapis.com` |
 | SQL | 不使用 | 本项目只使用官方 CSV |
 | TeX | 用户级 TinyTeX 2026，CTAN `elsarticle` | 主文件为 `docs/writing/manuscript/main.tex` |
 | 远程计算 | 不使用 | 本地 CPU 足以完成示例分析 |
@@ -16,6 +16,7 @@
 - 认证使用 `kaggle auth login`、`KAGGLE_API_TOKEN`、`~/.kaggle/access_token` 或 legacy `~/.kaggle/kaggle.json`。
 - token 不进入仓库文件、日志或命令输出。
 - `train.csv`、`test.csv`、压缩包和其他竞赛原始文件不提交。
+- 当前环境下载时显式设置 `KAGGLE_STORAGE_TLS_HOST=storage.cloud.google.com`；脚本仍先尝试官方 CLI，回退只改变 TLS 连接主机并保留官方签名请求的 HTTP Host。
 
 ## 分析与复现
 
