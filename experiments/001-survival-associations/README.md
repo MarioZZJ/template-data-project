@@ -49,6 +49,7 @@
 ## 当前决策
 
 - 状态：`DONE`；分析步骤和正式输出已从官方原始快照重建。
+- 轻量研究过程汇报已经完成，直接引用中央正式图表；构建产物位于 `docs/writing/manuscript/build/main.pdf`，不提交到 Git。
 - 不进行 Kaggle submission。
 - 正式输出只进入中央 `outputs/`。
 - 以上是条件关联和轻量内部验证，不构成因果估计或竞赛排名。

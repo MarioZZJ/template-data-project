@@ -13,6 +13,7 @@ env_start_re = re.compile(r'\\begin\{([^}]+)\}')
 env_end_re = re.compile(r'\\end\{([^}]+)\}')
 command_only_re = re.compile(r'^\s*\\[A-Za-z@]+(?:\[[^\]]*\])?(?:\{[^}]*\})*\s*$')
 sentence_sep_re = re.compile(r'[。.!?！？]')
+internal_dot_re = re.compile(r'(?<=\w)\.(?=\w)')
 path_command_re = re.compile(
     r'^\s*\\(?:graphicspath|includegraphics|input|include|bibliography)\b'
 )
@@ -35,7 +36,8 @@ def is_command_only(line: str) -> bool:
 def is_invalid_sentence_line(line: str) -> bool:
     if is_command_only(line):
         return False
-    return len(sentence_sep_re.findall(line)) > 1
+    prose = internal_dot_re.sub('', line)
+    return len(sentence_sep_re.findall(prose)) > 1
 
 
 def scan_file(path: Path, issues: list[str]) -> None:

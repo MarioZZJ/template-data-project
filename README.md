@@ -80,6 +80,7 @@ make prepare-elsevier-submission
 ```
 
 默认手稿使用 CTAN `elsarticle` 和 Harvard author-year 样式，正文保持一行一句。
+当前轻量过程汇报直接引用中央正式图表，并明确它不是完整论文或最终研究结论。
 构建和投稿目录是生成产物，不提交到 Git。
 
 ## 数据限制
