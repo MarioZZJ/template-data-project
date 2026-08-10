@@ -22,7 +22,7 @@
 13. `docs/writing/README.md`
 14. `.agents/README.md`
 
-Titanic 初始化提交的固定链接和差异说明见 `docs/examples/titanic-walkthrough.md`。
+Titanic [初始化阶段](docs/examples/titanic-walkthrough.md#初始化阶段)的固定快照、差异和重点文件说明可作为结构参考。
 它只展示目录契约如何落到一个真实项目，不能机械复制其研究问题、变量、方法或数据获取方式。
 
 ## 2. 收集或确认研究上下文

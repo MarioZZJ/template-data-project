@@ -8,7 +8,7 @@
 - 正文一行一句，段落之间空一行。
 - 参考文献只登记已核实来源，不保留虚构占位文献。
 
-Titanic 汇报阶段如何直接引用中央正式输出，见 `docs/examples/titanic-walkthrough.md`。
+Titanic [汇报阶段](../examples/titanic-walkthrough.md#汇报阶段)展示 TeX 如何直接引用中央正式输出。
 
 ## 中央输出
 

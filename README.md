@@ -75,6 +75,7 @@ make prepare-elsevier-submission
 
 `example/titanic` 分支展示初始化、分析和轻量过程汇报三个阶段。
 固定提交链接、阶段差异和 GitHub 模板仓库的分支行为见 `docs/examples/titanic-walkthrough.md`；该示例用于阅读，不是新项目开发分支。
+从模板创建新仓库时默认只使用 `master`；即使选择 **Include all branches**，复制出的各分支历史也彼此无关。
 
 ## License
 
