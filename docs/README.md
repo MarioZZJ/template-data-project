@@ -21,10 +21,8 @@
 
 ## 当前项目配置
 
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-模板采用当前浅层文档结构。
-初始化时填写项目新增的长期知识入口和权威文件。
+Titanic 项目沿用当前浅层结构。
+研究问题与方法由 `docs/plans/research-plan.md` 维护，Kaggle 文件与校验信息由 `docs/data-sources.md` 和 `data/raw/titanic/README.md` 维护，不增加数据库 schema 文档。
 
 ## 维护规则
 

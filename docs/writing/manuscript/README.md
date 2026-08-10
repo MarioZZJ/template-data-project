@@ -21,10 +21,8 @@
 
 ## 当前项目配置
 
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-当前是 `elsarticle` Harvard author-year 模板，尚未填写真实论文内容。
-初始化时填写文档阶段和实际引用方式。
+当前计划生成一份 Titanic 研究过程汇报，使用 `elsarticle` 单一主文档。
+分析完成前不写入统计结果；届时从 `../../../outputs/figures/` 和 `../../../outputs/tables/` 直接引用正式产物，并明确文档不是完整论文或最终结论。
 
 ## 维护规则
 

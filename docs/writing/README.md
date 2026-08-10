@@ -20,10 +20,8 @@
 
 ## 当前项目配置
 
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-当前使用 CTAN `elsarticle`、Harvard author-year 和单一主 TeX 文档。
-初始化时填写写作阶段、语言、作者和投稿目标。
+计划在分析完成后把单一 `main.tex` 改为中文轻量研究过程汇报。
+继续使用 CTAN `elsarticle` 与单一主文档，直接引用中央 `outputs/`，不把示例包装为完整论文或最终研究结论。
 
 ## 维护规则
 

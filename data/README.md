@@ -19,10 +19,9 @@
 
 ## 当前项目配置
 
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-模板仅保留四个数据层及空叶子目录。
-初始化时填写项目采用的数据源、落点和访问边界。
+本项目使用 Kaggle Titanic competition 的 `train.csv` 和 `test.csv`。
+原始文件位于 `data/raw/titanic/`，可重建分析数据计划写入 `data/processed/titanic-analysis.csv`；`interim/` 保存步骤间汇总，`external/` 当前不使用。
+原始 CSV、压缩包、中间数据和处理后数据不提交，来源 README 与校验信息由 Git 跟踪。
 
 ## 维护规则
 

@@ -1,20 +1,14 @@
-# 数据来源登记
-
-本文件登记项目实际使用或计划使用的本地文件、Kaggle 竞赛、BigQuery、MSSQL、API 和第三方交付数据。
-远程数据必须记录 project/database/dataset/schema/table 或等价标识，并记录版本、访问日期或提取日期。
-
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
+# Titanic 数据来源登记
 
 | ID | 系统 | 资源/表 | 访问方式 | 版本或提取日期 | 本地落点 | 提取脚本 | 备注 |
 |---|---|---|---|---|---|---|---|
-| `DATA-001` | 待确认 | 待确认 | 待确认 | 待确认 | 待确认 | 待确认 | 初始化时替换本行 |
+| `TITANIC-TRAIN` | Kaggle competition | `titanic/train.csv` | Kaggle CLI；需先接受竞赛规则并认证 | 待下载 | `data/raw/titanic/train.csv` | `src/001-download_titanic_data.sh`（待建立） | 含 `Survived`，用于主要关联分析与交叉验证 |
+| `TITANIC-TEST` | Kaggle competition | `titanic/test.csv` | Kaggle CLI；需先接受竞赛规则并认证 | 待下载 | `data/raw/titanic/test.csv` | `src/001-download_titanic_data.sh`（待建立） | 无 `Survived`，仅检查结构兼容性，不用于评价 |
 
-## 登记规则
+## 访问与版本规则
 
-- 本地文件、Kaggle、BigQuery、MSSQL、API 和其他来源统一登记。
-- 负责获取或处理的源码使用 `src/` 编号路径；尚未实现时写“待建立”，不创建空脚本。
-- 原始文件的大小、SHA-256、许可或访问限制写在相应 `data/<layer>/<source>/README.md`。
-- 凭据只存在于 `.env`、用户凭据目录或外部密钥系统，不进入文档、日志、命令输出或 Git。
-- 小型人工映射、元数据和正式汇总文件是否提交，由项目角色和敏感性决定，不按扩展名一概处理。
-
-安全获取和成本控制见 `docs/workflows/data-lifecycle.md`。
+- competition slug 固定为 `titanic`。
+- 首次成功下载后，把 UTC 下载时间、文件大小和 SHA-256 写入本文件与 `data/raw/titanic/README.md`。
+- 原始文件和下载压缩包由 `.gitignore` 排除，只有来源 README 被跟踪。
+- 认证只来自外部登录状态、环境变量或用户目录 token 文件。
+- 不向 Kaggle 提交预测文件。

@@ -1,13 +1,15 @@
 [project]
-name = "quantitative-research-project"
+name = "titanic-survival-associations"
 version = "0.1.0"
-description = "Reproducible single-study quantitative research project"
+description = "Reproducible analysis of Titanic passenger characteristics and survival"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "matplotlib>=3.10.9",
+    "numpy>=2.2.6",
     "pandas>=2.0.3",
-    "pyodbc>=5.2.0",
-    "python-dotenv>=1.0.1",
+    "scikit-learn>=1.7.2",
+    "statsmodels>=0.14.6",
 ]
 
 [tool.uv]

@@ -20,10 +20,9 @@
 
 ## 当前项目配置
 
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-模板仅保留 `figures/` 和 `tables/` 空叶子目录。
-初始化时填写预期正式输出和命名规则。
+计划正式图件为 `survival-rates-by-characteristics.pdf` 和 `main-model-odds-ratios.pdf`。
+计划正式表格至少包括 `descriptive-statistics`、`logistic-regression-results` 和 `model-performance` 的 CSV 与 TeX 版本；诊断和年龄缺失敏感性按实际分析增加。
+所有名称使用稳定语义，不包含运行日期或 `final`、`latest` 后缀。
 
 ## 维护规则
 
