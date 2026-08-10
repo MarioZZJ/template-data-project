@@ -1,1 +1,0 @@
-../../.agents/skills/test-skill/SKILL.md

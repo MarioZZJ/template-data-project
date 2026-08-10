@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 
+\graphicspath{{../../../outputs/figures/}}
 \biboptions{round,authoryear}
 \journal{Journal Name}
 
@@ -16,7 +17,6 @@
 \title{Project Title}
 
 \author[inst1]{First Author}
-\author[inst1]{Second Author}
 
 \affiliation[inst1]{
   organization={Institution Name},
@@ -25,11 +25,9 @@
 }
 
 \begin{abstract}
-This template provides a reproducible starting point for a data or research manuscript.
+This template provides a reproducible starting point for one quantitative research study.
 
-Each sentence is written on its own line to make version history easier to review.
-
-The abstract should state the problem, approach, main result, and implication without unsupported claims.
+Replace this text with the research question, data, method, main evidence, and appropriately bounded implication.
 \end{abstract}
 
 \begin{keyword}
@@ -40,37 +38,26 @@ keyword one \sep keyword two \sep keyword three
 
 \section{Introduction}
 
-This section introduces the research problem and explains why it matters.
-
-The opening paragraph should establish context without overstating novelty.
-
-A placeholder reference can be cited with \citet{placeholder2026} while the project replaces the bibliography.
+State the research problem and explain why it matters without overstating novelty.
 
 \section{Methods}
 
-This section describes the data, preprocessing, models, experiments, and evaluation protocol.
-
-The methods should be detailed enough for another researcher to reproduce the main results.
+Describe the data, sample construction, analysis, uncertainty, and validation in enough detail to reproduce the evidence.
 
 \section{Results}
 
-This section reports the main empirical findings.
-
-Each result should connect to a figure, table, or reproducible experiment artifact.
+Report observations and estimates that can be traced to numbered source files and central outputs.
 
 \section{Discussion}
 
-This section interprets the results and explains their limitations.
-
-Separate direct observations from broader implications.
+Separate direct evidence from interpretation and state the limitations of the design.
 
 \section{Conclusion}
 
-This section summarizes the main contribution and the most important evidence.
+Summarize the supported contribution without introducing new results.
 
-It should avoid introducing new results.
-
-\bibliographystyle{elsarticle-harv}
-\bibliography{references}
+% Add only verified references, then enable the Harvard bibliography below.
+% \bibliographystyle{elsarticle-harv}
+% \bibliography{references}
 
 \end{document}

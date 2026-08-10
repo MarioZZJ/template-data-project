@@ -3,18 +3,15 @@
 init: init-python init-tex
 
 init-python:
-	@if command -v uv >/dev/null 2>&1; then \
-		echo "Initializing Python environment with uv"; \
-		uv sync || uv venv; \
-	else \
-		echo "uv not found. Install uv or use the existing project environment."; \
-	fi
+	@command -v uv >/dev/null 2>&1 || { echo "uv not found; install uv and retry." >&2; exit 1; }
+	@uv sync
 
 init-tex:
 	@bash scripts/init-tex-env.sh
 
 manuscript:
 	@cd docs/writing/manuscript && latexmk -pdf -r ../../../.latexmkrc main.tex
+	@test -s docs/writing/manuscript/build/main.pdf
 
 manuscript-diff:
 	@base="$${BASE_SHA:-$${BASE_REF:-}}"; \

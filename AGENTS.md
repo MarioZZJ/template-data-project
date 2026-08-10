@@ -1,118 +1,46 @@
 # AGENTS.md
 
-## 目标
+## 仓库定位
 
-本仓库是可复现的数据/科研项目模板。
+本仓库面向单篇数据驱动、过程密集型定量科学研究。
+一个仓库默认对应一篇论文或一项完整定量分析。
 
-Agent 优先级：
+## 任务入口
 
-- 可复现
-- 决策可追踪
-- 小步、可审查的改动
-- 清晰的实验进展
-- 稳定的分析、图表、表格和 TeX 手稿输出
-- 只在流程真实变化时更新文档
+- 开始任何任务前先读 `README.md` 和 `DASHBOARD.md`。
+- 根目录存在 `INITIALIZE_PROJECT.md` 时，项目尚未完成初始化；优先按该清单执行，完成后删除它。
+- Titanic 三阶段示例只从 `docs/examples/titanic-walkthrough.md` 进入，不把示例分支整体合并或拣选到新项目。
 
-Codex 是主要 agent 运行时。
+## 按任务读取
 
-Claude 兼容文件只作为链接层存在。
-不要维护独立的 Claude 专用说明。
+- 数据任务：`data/README.md`、`docs/data-sources.md`、`docs/workflows/data-lifecycle.md`。
+- 研究步骤：`src/README.md`、`README.md` 的“研究执行顺序”、`docs/workflows/research-execution.md`。
+- 实验任务：`experiments/README.md`、`docs/workflows/experiments.md`。
+- 写作任务：`docs/writing/README.md`、`docs/writing/manuscript/README.md`、`docs/workflows/manuscript.md`、`docs/workflows/writing-and-figures.md`。
+- 协作任务：`docs/workflows/collaboration.md`。
 
-## 先读这些
+## 全局规则
 
-- 项目概览：@README.md
-- 实验看板：@DASHBOARD.md
-- 项目初始化流程：@docs/agents/project-initialization.md
-- Agent 文档索引：@docs/agents/README.md
-- 仓库结构：@docs/agents/repo-map.md
-- 数据流程：@docs/agents/data-project-workflow.md
-- 实验流程：@docs/agents/experiment-workflow.md
-- 写作和绘图风格：@docs/agents/writing-and-figure-style.md
-- TeX 手稿流程：@docs/agents/tex-manuscript-workflow.md
-- GitHub 论文协作流程：@docs/agents/paper-collaboration-workflow.md
-- 源码组织：@src/README.md
-- 脚本策略：@scripts/README.md
+- `DASHBOARD.md` 是项目状态的唯一真源。
+- `outputs/figures/` 和 `outputs/tables/` 是正式图件和表格的唯一真源。
+- 不覆盖 `data/raw/` 中的原始数据；非显然转换必须可追溯。
+- 根 `README.md` 中人工维护的执行顺序是完整命令、输入、输出和依赖关系的权威说明。
+- 不建立一键运行全部研究的总控入口，不默认引入工作流引擎。
+- 不擅自建立 Notebook、subagent、MCP、provider、model、sandbox 配置或大量 skills。
+- `.agents/skills/example-skill/` 只是格式示例，不是默认工作流。
+- 使用 `uv` 管理 Python 依赖；不手工编辑 `uv.lock`。
+- 文档默认使用中文；代码、命令、路径和技术标识符保留英文。
 
-## 安全工作
+## Git 安全
 
-- 非平凡修改前先检查远端和工作区：`git fetch origin`、`git status --short --branch`、`git rev-list --left-right --count HEAD...@{u}`。
-- 如果本地分支落后 upstream，先停下询问，不擅自 merge 或 rebase。
-- 改脚本前先查看邻近 README、既有输出目录和调用方式，确认它在当前流程里的角色。
-- 工作区已有改动时，默认视为用户改动；围绕它们工作，不顺手回滚。
+- 非平凡修改前执行 `git fetch origin`、`git status --short --branch` 和 `git rev-list --left-right --count HEAD...@{u}`。
+- 本地落后上游时先停下，不自行 merge、rebase 或改写历史。
+- 已有工作区改动视为用户改动；不使用 `reset --hard`、`checkout --`、`restore` 或自动 stash 丢弃它们。
+- 显式选择提交文件；不提交凭据、大型原始数据或无关改动；不 force push。
 
-## 目录策略
+## 完成前最低验证
 
-- 不创建根目录 `agents/`。
-- 不创建根目录 `dbschema/`。
-- 不创建根目录 `reports/`。
-- Agent 长文档放在 `docs/agents/`。
-- 数据库 schema 文档放在 `docs/agents/dbschema/`。
-- 项目研究计划放在 `docs/plans/`。
-- 项目环境和操作偏好放在 `docs/project-preferences.md`。
-- 只有真实可复用的 Codex skill 才放到 `.agents/skills/`，普通项目说明不要做成 skill。
-- Codex custom agents 放在 `.codex/agents/`。
-- 支持符号链接时，`CLAUDE.md` 指向本文件。
-- `.claude/` 只保留兼容链接。
-
-## 初始化策略
-
-- 先配置 Python/TeX 环境。
-- 再形成研究计划草案：@docs/plans/research-plan.md
-- 同步记录环境和操作偏好：@docs/project-preferences.md
-- 根据研究计划拆出第一个最小可运行实验。
-- 不要在模板阶段替项目提前设计完整研究路线。
-
-## 代码和脚本策略
-
-- 可复用代码放在 `src/`，按真实项目功能模块组织。
-- 源码组织规则见 @src/README.md。
-- 集成脚本放在 `scripts/`。
-- 脚本用于初始化环境，或按固定顺序调用一个或多个 `src/` 模块完成研究流程。
-- 没有真实项目上下文前，不添加一次性 harness。
-- 使用 `uv` 管理 Python 环境和依赖，不用临时 `pip install` 或 Conda 命令污染项目。
-- 不手改 `uv.lock`；如果锁文件刷新会带来 registry URL 或无关依赖 churn，先说明原因和影响。
-
-## 数据策略
-
-- 原始数据放在 `data/raw/`。
-- 中间数据放在 `data/interim/`。
-- 清洗后数据放在 `data/processed/`。
-- 外部来源数据放在 `data/external/`。
-- 不覆盖原始数据。
-- 不提交大型生成数据，除非项目明确需要。
-- 非显然的数据转换必须记录。
-- 小型 CSV/JSON 可能是 benchmark metadata 或人工整理索引，不要只按扩展名决定是否跟踪；先看路径、来源和角色。
-
-## 实验策略
-
-- 实验运行放在 `experiments/`。
-- 每个实验至少记录配置、运行说明和结果位置。
-- 通用图表输出到 `outputs/figures/`。
-- 通用表格输出到 `outputs/tables/`。
-- 手稿专用图表放到 `docs/writing/manuscript/figures/` 或 `docs/writing/manuscript/tables/`。
-- 实验状态变化时更新 @DASHBOARD.md。
-
-## 写作策略
-
-- 默认写作输出使用 TeX。
-- 手稿放在 `docs/writing/manuscript/`。
-- 默认使用 CTAN `elsarticle` 的 Harvard author-year 样式。
-- 默认只维护一个主 TeX 文档：`docs/writing/manuscript/main.tex`。
-- 模板阶段不拆分章节文件。
-- TeX 正文一行一句。
-- 段落之间空一行。
-- GitHub 上区分批注和修改：批注用 Issue 加正文 permalink，实际改写用小 PR 和 PR review。
-- 不为没有正文改动的问题创建空 PR 或无意义 whitespace 改动。
-- 图表必须能追踪到生成代码和数据。
-- 写作和绘图指南见 @docs/agents/writing-and-figure-style.md。
-- 论文协作规则见 @docs/agents/paper-collaboration-workflow.md。
-
-## 文档策略
-
-- Markdown 文档默认使用中文。
-- 文件名使用 `kebab-case.md`。
-- `docs/agents/` 保持浅层结构，除非项目增长出足够上下文。
-- 优先维护少数被 `AGENTS.md` 引用的权威文档。
-- 稳定新的分析或数据流程时，就近 README 要记录命令、输入路径假设和输出目录。
-- 需要大型本地文件时，文档只记录 schema、来源和预期路径，不提交文件本体。
-- 不写永久迁移说明，除非用户明确要求。
+- 从 `README.md` 列出的命令逐项验证受影响步骤。
+- 运行 `git diff --check`，并对变更的 shell、Python、TeX 文件执行相应语法或构建检查。
+- 确认正式输出、生成脚本、输入和关键参数可以互相追溯。
+- 状态或结果变化时同步更新 `DASHBOARD.md`、相关实验 README 和执行顺序。

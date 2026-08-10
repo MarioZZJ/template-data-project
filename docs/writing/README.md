@@ -1,33 +1,41 @@
-# 写作输出
+# 写作
 
-这里存放项目写作产物。
+## 本目录职责
 
-默认写作格式是 TeX。
+`docs/writing/` 保存研究写作入口和默认 TeX 手稿。
+写作必须以已登记数据、实验记录和中央正式输出为依据。
 
-## 默认手稿
+## 初始化时需要判断
 
-- 主文件：`docs/writing/manuscript/main.tex`
-- 参考文献：`docs/writing/manuscript/references.bib`
-- 手稿图：`docs/writing/manuscript/figures/`
-- 手稿表：`docs/writing/manuscript/tables/`
-- 提交目录：`docs/writing/manuscript/submission/`
+- 当前交付是过程汇报、工作论文还是投稿稿件。
+- 投稿目标、作者、机构、语言和参考文献样式。
+- 哪些正式图表进入正文，以及它们回答的研究问题。
+- 协作者使用 Issue、PR review、PDF artifact 或其他方式审阅。
 
-## TeX 写作规则
+## 推荐建立的项目文件
 
-正文一行一句。
+- 默认维护 `manuscript/main.tex` 和 `manuscript/references.bib`。
+- 模板阶段不拆章节；正文显著增长且协作确有需要时再决定。
+- 其他写作产物只在项目明确需要时增加。
 
-段落之间空一行。
+## 当前项目配置
 
-两个连续换行表示段落分隔。
+<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
 
-不要把多个句子写在同一行。
+当前使用 CTAN `elsarticle`、Harvard author-year 和单一主 TeX 文档。
+初始化时填写写作阶段、语言、作者和投稿目标。
 
-除 LaTeX 命令、公式、表格和环境外，不要把一个句子拆成多行。
+## 维护规则
 
-## 默认期刊模板
+- TeX 正文一行一句，段落之间空一行。
+- 不虚构参考文献、统计结果、许可或研究结论。
+- 手稿直接引用 `outputs/` 中的正式图表，不在本目录保存副本。
+- 写作状态变化时更新 `DASHBOARD.md`。
 
-默认使用 CTAN `elsarticle` 的 Harvard author-year 参考文献样式，除非项目选择其他投稿目标。
+## 相关文档
 
-模板默认只使用一个主 TeX 文件。
-
-投稿时用 `docs/writing/manuscript/submission/` 准备提交目录。
+- `AGENTS.md`
+- `README.md`
+- `DASHBOARD.md`
+- `docs/workflows/writing-and-figures.md`
+- `docs/workflows/manuscript.md`

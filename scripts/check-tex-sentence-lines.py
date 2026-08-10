@@ -13,6 +13,9 @@ env_start_re = re.compile(r'\\begin\{([^}]+)\}')
 env_end_re = re.compile(r'\\end\{([^}]+)\}')
 command_only_re = re.compile(r'^\s*\\[A-Za-z@]+(?:\[[^\]]*\])?(?:\{[^}]*\})*\s*$')
 sentence_sep_re = re.compile(r'[。.!?！？]')
+path_command_re = re.compile(
+    r'^\s*\\(?:graphicspath|includegraphics|input|include|bibliography)\b'
+)
 
 IGNORE_ENV_NAMES = {
     'equation', 'equation*', 'align', 'align*', 'alignat', 'alignat*',
@@ -26,7 +29,7 @@ IGNORE_ENV_NAMES = {
 
 
 def is_command_only(line: str) -> bool:
-    return bool(command_only_re.match(line))
+    return bool(command_only_re.match(line) or path_command_re.match(line))
 
 
 def is_invalid_sentence_line(line: str) -> bool:

@@ -9,8 +9,11 @@ on:
       - ready_for_review
     paths:
       - docs/writing/manuscript/**
+      - outputs/figures/**
+      - outputs/tables/**
       - .github/workflows/manuscript.yml
       - scripts/build-manuscript-diff.sh
+      - scripts/prepare-elsevier-submission.sh
   release:
     types:
       - published
