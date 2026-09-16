@@ -25,21 +25,11 @@ build/
 Thumbs.db
 *~
 
-# Data layers: ignore payloads while allowing directory facts and metadata
-data/raw/**
-data/interim/**
-data/processed/**
-data/external/**
-!data/raw/**/
-!data/interim/**/
-!data/processed/**/
-!data/external/**/
-!data/**/.gitkeep
-!data/**/README.md
-!data/**/metadata.*
-!data/**/checksums.*
-!data/**/*-metadata.*
-!data/**/*-checksums.*
+# Research payloads live outside Git; refuse accidental local data copies.
+data/
+.research-local.json
+.multica/
+AGENTS.local.md
 
 # Logs and temporary files
 *.log

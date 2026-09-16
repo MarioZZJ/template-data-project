@@ -1,45 +1,24 @@
 # 仓库工具
 
-## 本目录职责
+这里保存跨研究内容的运行与交付入口，以及 TeX、论文差异和投稿工具。具体取数、样本构造、分析和图表步骤属于 `src/`。
 
-`scripts/` 只存放跨研究内容的仓库工具，例如 TeX 环境检查、TeX 风格检查、手稿 diff 和 Elsevier 投稿打包。
-具体数据获取、分析、图表和表格步骤属于 `src/`。
+## 研究运行入口
 
-## 初始化时需要判断
+`research.py` 提供 `setup / run / status / deliver / export`，由 Python 3.10 及以上执行；完整命令和边界见 [研究执行](../docs/workflows/research-execution.md)。Makefile 是便捷别名，研究入口在 Windows 不要求 Make。
 
-- 现有 TeX 和投稿工具是否符合项目的期刊与协作方式。
-- 项目是否出现了真实、重复且跨研究内容的仓库维护需求。
-- 新工具是否会与根 README 的人工执行顺序或 `src/` 职责重叠。
+入口管理本机映射、固定代码与环境、一次持久作业、交付记录和正式产物导出。阶段授权与任务依赖保留在 Multica，完成事件和已授权收尾由配套桥接程序处理，不在仓库另建任务调度服务或一键执行全部研究的隐式授权入口。
 
-## 推荐建立的项目文件
+## 论文工具
 
-模板已有：
+- `init-tex-env.sh`：TeX 环境检查。
+- `check-tex-sentence-lines.py`：TeX 一行一句检查。
+- `build-manuscript-diff.sh`：PR 范围的差异 PDF。
+- `prepare-elsevier-submission.sh`：从手稿和正式图表生成投稿包。
 
-- `init-tex-env.sh`
-- `check-tex-sentence-lines.py`
-- `build-manuscript-diff.sh`
-- `prepare-elsevier-submission.sh`
+论文工具依赖 Bash、Make 和相应 TeX 命令，Windows 需单独准备这些运行条件。它们的跨平台情况与研究持久作业适配分别验收。
 
-不要增加 `run-all`、研究流水线、通用数据库连接器、通用下载器、自动实验编排器或 Agent 资产校验器。
+## 修改检查
 
-## 当前项目配置
+按受影响行为验证：运行接口检查真实输入输出、进程托管与恢复；shell 脚本至少 `bash -n` 并执行其直接路径；论文工具检查产物非空和干净检出的引用。生成目录及临时文件不提交。
 
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-当前使用模板提供的 TeX 与 Elsevier 工具。
-初始化时说明是否调整投稿目标或协作方式。
-
-## 维护规则
-
-- 修改脚本前先读本文件和相应工作流文档。
-- shell 脚本至少通过 `bash -n`；修改后运行其直接调用路径。
-- 只在流程真实变化时更新文档，不保留重复环境入口。
-- 生成目录和临时文件不提交。
-
-## 相关文档
-
-- `AGENTS.md`
-- `README.md`
-- `DASHBOARD.md`
-- `docs/workflows/manuscript.md`
-- `docs/workflows/collaboration.md`
+参见 [手稿工作流](../docs/workflows/manuscript.md)、[协作约定](../docs/workflows/collaboration.md)。

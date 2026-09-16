@@ -11,6 +11,7 @@ on:
       - docs/writing/manuscript/**
       - outputs/figures/**
       - outputs/tables/**
+      - outputs/provenance.json
       - .github/workflows/manuscript.yml
       - scripts/build-manuscript-diff.sh
       - scripts/prepare-elsevier-submission.sh

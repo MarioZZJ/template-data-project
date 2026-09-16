@@ -394,16 +394,21 @@ source = { virtual = "." }
 dependencies = [
     { name = "pandas", version = "2.3.3", source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pandas", version = "3.0.2", source = { registry = "https://mirror.nju.edu.cn/pypi/web/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pyodbc" },
     { name = "python-dotenv" },
+]
+
+[package.optional-dependencies]
+mssql = [
+    { name = "pyodbc" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=2.0.3" },
-    { name = "pyodbc", specifier = ">=5.2.0" },
+    { name = "pyodbc", marker = "extra == 'mssql'", specifier = ">=5.2.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
 ]
+provides-extras = ["mssql"]
 
 [[package]]
 name = "six"

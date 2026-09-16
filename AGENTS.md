@@ -1,46 +1,40 @@
-# AGENTS.md
+# 研究执行入口
 
-## 仓库定位
+本仓库面向使用 Multica 协作的一项完整数据驱动研究。开始工作先确认当前任务，而不是从仓库看板猜测下一步。
 
-本仓库面向单篇数据驱动、过程密集型定量科学研究。
-一个仓库默认对应一篇论文或一项完整定量分析。
+## 必读路线
 
-## 任务入口
+1. 读取当前 Multica issue、最新意见和父任务的有效授权；确认本次完整范围、前置成果、检查标准和必要复核。
+2. 读取 [项目简介](README.md)、[项目偏好](docs/project-preferences.md) 及 issue 指定的 [研究计划](docs/plans/research-plan.md) 章节。计划描述科学依赖，Multica 管理执行依赖与状态。
+3. 按工作类型读取：数据任务看 [数据来源](docs/data-sources.md) 和 [数据生命周期](docs/workflows/data-lifecycle.md)；实施看 [研究执行](docs/workflows/research-execution.md)；解释看 [实验说明](experiments/README.md)；写作看 [手稿流程](docs/workflows/manuscript.md) 和 [图表约定](docs/workflows/writing-and-figures.md)。
+4. 根目录存在 `INITIALIZE_PROJECT.md` 时，按该清单完成接入。若尚无 issue，先按研究计划形成任务及授权预览，不从空白配置推定授权。
 
-- 开始任何任务前先读 `README.md` 和 `DASHBOARD.md`。
-- 根目录存在 `INITIALIZE_PROJECT.md` 时，项目尚未完成初始化；优先按该清单执行，完成后删除它。
-- Titanic 三阶段示例只从 `docs/examples/titanic-walkthrough.md` 进入，不把示例分支整体合并或拣选到新项目。
+项目资源和小队指令只是入口，不能假定内容已自动注入每位成员。实际打开必读文件；关键限制还应直接写在任务正文中。
 
-## 按任务读取
+## 研究与执行边界
 
-- 数据任务：`data/README.md`、`docs/data-sources.md`、`docs/workflows/data-lifecycle.md`。
-- 研究步骤：`src/README.md`、`README.md` 的“研究执行顺序”、`docs/workflows/research-execution.md`。
-- 实验任务：`experiments/README.md`、`docs/workflows/experiments.md`。
-- 写作任务：`docs/writing/README.md`、`docs/writing/manuscript/README.md`、`docs/workflows/manuscript.md`、`docs/workflows/writing-and-figures.md`。
-- 协作任务：`docs/workflows/collaboration.md`。
+- 已授权阶段内连续完成全量范围及合理恢复；改变研究问题、样本、主要方法、证据标准或资源范围时，集中提交需要用户决定的事项。既有暂停和停止点保持有效。
+- 有效零结果或相反结果照常保留并解释。程序退出成功、模型一致或小样本通过，都不自动代表研究结论成立或全量任务完成。
+- 普通任务自检；只有阶段预先指定的关键交付物需要独立复核。子任务提交交付后进入 `in_review`，由已授权桥接程序检查并完成；阶段父任务等待人工验收。
+- Multica 是任务状态、负责人、依赖与有效阶段授权的来源。[DASHBOARD](DASHBOARD.md) 是生成快照，过期时查询平台，不手工更新第二份状态。
+- 固定输入位于 `~/ResearchAssets/<仓库名>/inputs/`，不能原地覆盖；运行的中间数据和候选图在独立运行目录。仅选定的正式图表通过 `export` 进入 `outputs/`。
+- 长作业通过 `scripts/research.py run` 启动，使用包含实际改动的已提交代码快照和外部稳定环境。不能依赖临时工作树、会话进程或会话令牌持续存活。
+- 等待和通知恢复交给程序；不要持续保持模型会话轮询。通知失败不能作为重复提交付费计算的理由。
 
-## 全局规则
+## 交付与汇报
 
-- `DASHBOARD.md` 是项目状态的唯一真源。
-- `outputs/figures/` 和 `outputs/tables/` 是正式图件和表格的唯一真源。
-- 不覆盖 `data/raw/` 中的原始数据；非显然转换必须可追溯。
-- 根 `README.md` 中人工维护的执行顺序是完整命令、输入、输出和依赖关系的权威说明。
-- 不建立一键运行全部研究的总控入口，不默认引入工作流引擎。
-- 不擅自建立 Notebook、subagent、MCP、provider、model、sandbox 配置或大量 skills。
-- `.agents/skills/example-skill/` 只是格式示例，不是默认工作流。
-- 使用 `uv` 管理 Python 依赖；不手工编辑 `uv.lock`。
-- 文档默认使用中文；代码、命令、路径和技术标识符保留英文。
+遵循逐成员绑定的研究汇报、研究任务交付技能。普通评论默认不超过 300 字，决策评论不超过 600 字；先说明结论、研究影响和下一动作，详细证据用链接提供。
 
-## Git 安全
+交付必须说明完整执行范围、产物、自检、研究与下游影响及必要复核，支持无计算的文档任务。使用 `deliver` 形成记录，再由当前执行身份发布交付评论；本地记录不证明平台已经验收。新意见出现后重新检查交付，不能绕过版本冲突关闭任务。
 
-- 非平凡修改前执行 `git fetch origin`、`git status --short --branch` 和 `git rev-list --left-right --count HEAD...@{u}`。
-- 本地落后上游时先停下，不自行 merge、rebase 或改写历史。
-- 已有工作区改动视为用户改动；不使用 `reset --hard`、`checkout --`、`restore` 或自动 stash 丢弃它们。
-- 显式选择提交文件；不提交凭据、大型原始数据或无关改动；不 force push。
+实证统计图由数据程序生成。解释图可在运行时已验证支持 imagegen 时生成；工具缺失时保留短文字，不静默切换新付费服务。
 
-## 完成前最低验证
+## Git 与验证
 
-- 从 `README.md` 列出的命令逐项验证受影响步骤。
-- 运行 `git diff --check`，并对变更的 shell、Python、TeX 文件执行相应语法或构建检查。
-- 确认正式输出、生成脚本、输入和关键参数可以互相追溯。
-- 状态或结果变化时同步更新 `DASHBOARD.md`、相关实验 README 和执行顺序。
+- 修改前检查 `git status --short --branch` 及可用的上游差异，保留已有改动；更新远端引用后如发现冲突，先解决归属和衔接，不丢弃、自动暂存或改写他人工作。
+- 显式选择提交文件，不使用 `git add -A` 混入无关改动，不提交凭据、原始或中间数据，不 force push。创建提交遵守所在环境的署名规范；推送和发布遵守当前授权。
+- 使用 `uv` 管理依赖，不手工编辑 `uv.lock`。研究脚本保持按路径执行，无需为模板建立 Python 包。
+- 完成前运行受影响步骤的适当检查和 `git diff --check`；核对科学解释、正式图表来源和下游引用，说明未验证项目。
+- 项目特有的稳定经验写入现有实验或流程文档；确有复用需要时再沉淀到 [.agents](.agents/README.md)，不复制平台共享技能。
+
+文档默认中文；代码、命令、路径和技术标识符保留英文。

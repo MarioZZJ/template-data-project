@@ -1,41 +1,18 @@
-# 正式输出
+# 论文选用的正式输出
 
-## 本目录职责
+`figures/`、`tables/` 保存已选入论文或正式研究交付、并由 Git 跟踪的图表。普通运行、诊断与候选成果留在外部资产 `runs/<运行编号>/outputs/`，不能仅因脚本生成成功就成为正式成果。
 
-`outputs/figures/` 和 `outputs/tables/` 是正式图件和表格的唯一真源。
-正式输出供研究解释、手稿引用、审阅和发布使用，并由 Git 跟踪。
+## 选择与来源
 
-## 初始化时需要判断
+通过 `python scripts/research.py export` 从明确运行中选择文件，注明真实验收或选择依据。导出同步维护 `outputs/provenance.json`，使每项正式成果可追溯到运行、代码、固定输入、实际命令和关键参数；本模板不预填虚假产物索引。
 
-- 项目需要哪些正式图件、表格和可机器读取的配套格式。
-- 每个输出对应的研究问题、生成脚本、输入和关键参数。
-- 期刊、协作者或下游工具对格式、尺寸和可访问性的要求。
-- 哪些产物只是调试输出，不应进入本目录。
+图件优先使用适合出版的矢量格式，必要位图明确分辨率；表格可保存可复核的 CSV 及手稿需要的 TeX。文件名表达稳定含义，不使用 `final2`、`new`、`latest` 等名称。
 
-## 推荐建立的项目文件
+## 引用与维护
 
-- `figures/<stable-semantic-name>.pdf` 或必要的高分辨率位图。
-- `tables/<stable-semantic-name>.csv` 及手稿需要的 `.tex` 表。
-- 按实际需要增加简短清单，但不复制实验日志。
+- 图表回答明确的研究问题，单位、样本、图例和不确定性清楚；解释和局限记在实验说明及正文中。
+- 实验与手稿直接引用这里的文件，不保存第二份正式副本。投稿打包时才复制到生成的 bundle。
+- 更新图表时核对来源索引、实验解释、正文数值和图注，不手工同步第二份任务状态。
+- Git 中的正式图表和手稿应足够让干净检出编译论文，不要求 CI 访问用户本机研究资产。
 
-## 当前项目配置
-
-<!-- PROJECT-INIT: 初始化时填写并删除本注释 -->
-
-模板仅保留 `figures/` 和 `tables/` 空叶子目录。
-初始化时填写预期正式输出和命名规则。
-
-## 维护规则
-
-- 禁止使用 `final`、`final2`、`new`、`latest` 等不稳定命名。
-- 临时和调试产物不得混入正式目录。
-- 每个正式输出必须可追溯到生成脚本、输入和关键参数。
-- 实验和手稿目录不得保存第二份正式结果副本。
-
-## 相关文档
-
-- `AGENTS.md`
-- `README.md`
-- `DASHBOARD.md`
-- `docs/workflows/research-execution.md`
-- `docs/workflows/writing-and-figures.md`
+参见 [研究执行](../docs/workflows/research-execution.md)、[写作与图表](../docs/workflows/writing-and-figures.md)、[手稿工作流](../docs/workflows/manuscript.md)。

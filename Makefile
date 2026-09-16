@@ -1,4 +1,4 @@
-.PHONY: init init-python init-tex manuscript manuscript-diff clean-manuscript check-tex-style prepare-elsevier-submission dashboard
+.PHONY: init init-python init-tex manuscript manuscript-diff clean-manuscript check-tex-style prepare-elsevier-submission dashboard research-setup research-run research-status research-deliver research-export test-runtime
 
 init: init-python init-tex
 
@@ -42,5 +42,19 @@ check-tex-style:
 prepare-elsevier-submission:
 	@bash scripts/prepare-elsevier-submission.sh
 
+# ARGS are forwarded explicitly; Python is the portable entrypoint.
+PYTHON ?= python3
+research-setup:
+	@$(PYTHON) scripts/research.py setup $(ARGS)
+research-run:
+	@$(PYTHON) scripts/research.py run $(ARGS)
+research-status:
+	@$(PYTHON) scripts/research.py status $(ARGS)
+research-deliver:
+	@$(PYTHON) scripts/research.py deliver $(ARGS)
+research-export:
+	@$(PYTHON) scripts/research.py export $(ARGS)
 dashboard:
-	@sed -n '1,220p' DASHBOARD.md
+	@$(PYTHON) scripts/research.py status --dashboard-from "$(SNAPSHOT)" --dashboard DASHBOARD.md
+test-runtime:
+	@$(PYTHON) -m unittest discover -s tests -p 'test_research*.py' -v
