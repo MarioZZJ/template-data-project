@@ -51,7 +51,7 @@ python scripts/research.py status --dashboard-from <multica-snapshot.json> --das
 
 无计算任务可以省略 `--run-id`，仍需产物、实际检查和研究影响。只有确实完成全量范围才能写 `--scope-complete`；命令记录声明，不替执行者作科学判断。临时工作树内的产物会复制到资产根的稳定交付目录，已有稳定运行产物保留原位置，避免会话结束后文件失效。
 
-普通自检交付先完成检查，再按以下顺序发布：
+成员先完成自检，并在同一 issue 评论提及固定负责人 Butler，交回完成、失败或剩余差距；分工报告不等于全任务正式交付。Butler 无需用户决定时继续评论派工，需要实质决定时提及用户。全任务具备交付条件后，由 Butler 在属于原 issue 的执行中按以下顺序发布：
 
 1. 当前 issue 内执行先处理完其他需要上传的附件，将任务置为 `in_review` 且不启动新运行，再读取当前 issue 版本 `R`。读取后只新增一份最终交付 JSON 附件和一条交付评论。
 2. 准备交付，`--issue-revision` 填写 `R + 2`：上传这一份新 JSON 附件增加一次版本，创建评论再增加一次版本。此计算只适用于读取 `R` 后恰好新增一份附件的默认流程。
@@ -73,7 +73,7 @@ python scripts/research.py deliver --draft --review-required --issue-id <issue-u
 
 草稿 `*.draft.json` 的状态是 `awaiting_review`，不能用于关闭任务。独立复核者检查固定产物后，发布 `research-review/v1` 记录，保留草稿的同一 `delivery_id` 和完整 `artifacts` 数组，给出是否通过；等待该复核来源执行完成。复核未通过时先修正、建立并复核新草稿，不把旧复核套用到改变后的产物。
 
-通过复核后，回到原 issue 的执行先处理完其他附件，按上述方式进入 `in_review` 并读取 `R`。之后只新增一份最终 JSON 附件及交付评论，以 `R + 2` 为版本锚，并将复核评论 UUID 用于最终记录：
+通过复核后，由 Butler 回到原 issue 的执行先处理完其他附件，按上述方式进入 `in_review` 并读取 `R`。之后只新增一份最终 JSON 附件及交付评论，以 `R + 2` 为版本锚，并将复核评论 UUID 用于最终记录：
 
 ```text
 python scripts/research.py deliver --finalize <draft-path> --issue-id <issue-uuid> --review-evidence <review-comment-uuid> --issue-revision <R-plus-two>
@@ -101,7 +101,7 @@ python scripts/research.py export --run-id <run-id> --file <relative-output> --k
 
 桥接程序须先由工作区管理员部署为持续运行的系统服务，并按受保护策略登记本项目、阶段、子任务、资产根及原生 `run_only` webhook。模板 `setup` 不替代服务部署；未登记任务默认手动、未授权。接入步骤见初始化清单，实际配置与密钥保留在本机受保护位置。
 
-桥接与模板共用运行记录，负责完成通知、交付检查和父任务接续，不另建研究任务调度平台。状态不变时不唤醒模型。结果先到 `run_only` 接收者，再由它核验原 issue 并发一次带事件标记的负责人唤醒评论；真实研究交付由随后属于原 issue 的执行完成。通知受理、独立接收会话完成、原 issue 真正接续是三个不同证据，必须核对最后一步。未交接事件保留并去重恢复。
+桥接与模板共用运行记录，负责完成通知、交付检查和父任务接续，不另建研究任务调度平台。状态不变时不唤醒模型。结果先到 `run_only` 接收者，再由它核验原 issue 并发一次带事件标记的 Butler 唤醒评论；Butler 在随后属于原 issue 的执行中检查、继续评论派工或完成正式交付。通知受理、独立接收会话完成、原 issue 真正接续是三个不同证据，必须核对最后一步。未交接事件保留并去重恢复。
 
 通知重试与重新计算分开。运行时离线后恢复通知，不重复提交付费计算；用户暂停继续保持，预算、次数和截止时间跨重启保留。桥接凭据独立保管，不使用会话结束即失效的任务令牌。
 
