@@ -336,6 +336,64 @@ def launch(record, record_path):
         raise ValueError("Unknown supervisor")
 
 
+MULTICA_BEGIN = b"<!-- BEGIN MULTICA-RUNTIME (auto-managed; do not edit) -->"
+MULTICA_END = b"<!-- END MULTICA-RUNTIME -->"
+
+
+def strip_managed_context(content):
+    """Remove exactly the daemon-owned bytes; never normalize user whitespace."""
+    begin_count, end_count = content.count(MULTICA_BEGIN), content.count(MULTICA_END)
+    if begin_count == end_count == 0:
+        return content, None
+    if begin_count != 1 or end_count != 1:
+        raise ValueError("AGENTS.md has incomplete or duplicate Multica runtime markers")
+    start, stop = content.index(MULTICA_BEGIN), content.index(MULTICA_END)
+    if stop < start or not content[start:].startswith(MULTICA_BEGIN + b"\n"):
+        raise ValueError("AGENTS.md does not contain the exact Multica managed block format")
+    stop += len(MULTICA_END)
+    if content[stop:stop + 1] != b"\n":
+        raise ValueError("Multica managed block must have its daemon-written trailing newline")
+    stop += 1
+    # writeRuntimeConfigFile appends a fixed separator, independent of the
+    # existing user file's trailing bytes. At offset zero it created the file.
+    if start:
+        if content[max(0, start - 2):start] != b"\n\n":
+            raise ValueError("Multica managed block lacks the exact daemon separator")
+        start -= 2
+    managed = content[start:stop]
+    return content[:start] + content[stop:], managed
+
+
+def clean_code_context(repo):
+    """Accept only an unstaged daemon context block; all research code stays fixed."""
+    result = subprocess.run(["git", "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not result.stdout:
+        return []
+    message = "Commit the intended changes and resolve unrelated dirty files before run; the runtime never commits automatically"
+    if result.stdout != b" M AGENTS.md\0":
+        raise ValueError(message)
+    path = repo / "AGENTS.md"
+    if path.is_symlink() or not path.is_file() or git(repo, "diff", "--summary", "--", "AGENTS.md"):
+        raise ValueError(message)
+    head = subprocess.run(["git", "-C", str(repo), "show", "HEAD:AGENTS.md"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    working = path.read_bytes()
+    clean_head, _ = strip_managed_context(head)
+    clean_working, managed = strip_managed_context(working)
+    if managed is None:
+        raise ValueError(message)
+    # --path applies the repository's normal clean/text conversion, including
+    # core.autocrlf on Windows; no write to the index or object store occurs.
+    def blob_hash(content, normalize):
+        argv = ["git", "-C", str(repo), "hash-object", "--stdin"]
+        if normalize:
+            argv.append("--path=AGENTS.md")
+        return subprocess.run(argv, input=content, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.strip().decode("ascii")
+    head_hash = blob_hash(clean_head, False)
+    if blob_hash(clean_working, True) != head_hash:
+        raise ValueError("AGENTS.md has user changes outside the Multica runtime block; commit those changes before run")
+    return [{"path": "AGENTS.md", "kind": "multica-runtime-context", "head_sha256": hashlib.sha256(head).hexdigest(), "working_sha256": hashlib.sha256(working).hexdigest(), "managed_sha256": hashlib.sha256(managed).hexdigest(), "unmanaged_git_blob": head_hash}]
+
+
 def run(args):
     repo, root, _ = locate(args)
     command = list(args.command)
@@ -343,8 +401,7 @@ def run(args):
         command.pop(0)
     if not command:
         raise ValueError("run requires a command after --")
-    if git(repo, "status", "--porcelain", "--untracked-files=all"):
-        raise ValueError("Commit the intended changes and resolve unrelated dirty files before run; the runtime never commits automatically")
+    excluded_context = clean_code_context(repo)
     if git(repo, "ls-files", "--stage").find("160000 ") >= 0:
         raise ValueError("Submodules must have an explicit fixed snapshot strategy before long jobs")
     if any(str(repo) in argument for argument in command):
@@ -370,7 +427,7 @@ def run(args):
     kind = "foreground" if args.foreground else platform_supervisor()
     if kind != "foreground" and not supervisor_available(kind):
         raise RuntimeError("Native supervisor unavailable; fix it or use --foreground for synchronous diagnostics")
-    record = {"schema": SCHEMA, "run_id": run_id, "issue_id": args.issue_id, "status": "prepared", "command": command, "code_commit": commit, "code_dir": str(directory / "code"), "environment_dir": str(env), "asset_root": str(root), "inputs": inputs_for(root, args.input), "artifacts": [], "checks": [], "created_at": now(), "started_at": None, "finished_at": None, "exit_code": None, "supervisor": {"kind": kind, "id": "research-" + run_id.lower()}, "deadline": args.deadline, "attempts": 0, "attempt_limit": args.attempt_limit, "budgets": budgets, "execution_host": socket.gethostname(), "execution_platform": sys.platform}
+    record = {"schema": SCHEMA, "run_id": run_id, "issue_id": args.issue_id, "status": "prepared", "command": command, "code_commit": commit, "code_dir": str(directory / "code"), "environment_dir": str(env), "asset_root": str(root), "inputs": inputs_for(root, args.input), "artifacts": [], "checks": [], "created_at": now(), "started_at": None, "finished_at": None, "exit_code": None, "supervisor": {"kind": kind, "id": "research-" + run_id.lower()}, "deadline": args.deadline, "attempts": 0, "attempt_limit": args.attempt_limit, "budgets": budgets, "execution_host": socket.gethostname(), "execution_platform": sys.platform, "excluded_context": excluded_context}
     record_path = directory / "run.json"
     shutil.copy2(Path(__file__).resolve(), directory / "runtime.py")
     record["runtime_sha256"] = digest(directory / "runtime.py")

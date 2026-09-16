@@ -93,6 +93,64 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Commit"):
             self.run_script("print(1)")
 
+    def inject_managed_context(self, prefix=None):
+        path = self.repo / "AGENTS.md"
+        original = path.read_bytes() if prefix is None else prefix
+        block = r.MULTICA_BEGIN + b"\n# Multica Agent Runtime\nRuntime-only context.\n" + r.MULTICA_END + b"\n"
+        path.write_bytes(original + b"\n\n" + block)
+        return original, block
+
+    def test_managed_agents_context_is_excluded_but_not_committed(self):
+        self.setup()
+        original, _ = self.inject_managed_context()
+        working_before = (self.repo / "AGENTS.md").read_bytes()
+        record = self.run_script("pass")
+        self.assertEqual(record["status"], "succeeded")
+        archived = (Path(record["code_dir"]) / "AGENTS.md").read_bytes()
+        archived_blob = subprocess.run(["git", "-C", str(self.repo), "hash-object", "--stdin", "--path=AGENTS.md"], input=archived, check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+        self.assertEqual(archived_blob, r.git(self.repo, "rev-parse", "HEAD:AGENTS.md"))
+        self.assertNotIn(r.MULTICA_BEGIN, archived)
+        self.assertEqual((self.repo / "AGENTS.md").read_bytes(), working_before)
+        self.assertEqual(record["excluded_context"][0]["kind"], "multica-runtime-context")
+        self.assertEqual(record["excluded_context"][0]["working_sha256"], r.digest(self.repo / "AGENTS.md"))
+        self.assertEqual(r.git(self.repo, "diff", "--cached", "--name-only"), "")
+
+    def test_managed_block_does_not_hide_human_or_other_file_edits(self):
+        self.setup()
+        original, block = self.inject_managed_context()
+        path = self.repo / "AGENTS.md"
+        path.write_bytes(original + b"Human change.\n\n" + block)
+        with self.assertRaisesRegex(ValueError, "user changes"):
+            self.run_script("pass")
+        path.write_bytes(original + b"\n\n" + block)
+        (self.repo / "analysis.py").write_text("print('new research code')")
+        with self.assertRaisesRegex(ValueError, "Commit"):
+            self.run_script("pass")
+        (self.repo / "analysis.py").unlink()
+        r.git(self.repo, "add", "--", "AGENTS.md")
+        with self.assertRaisesRegex(ValueError, "Commit"):
+            self.run_script("pass")
+
+    def test_managed_context_rejects_ambiguous_markers_and_preserves_whitespace(self):
+        block = r.MULTICA_BEGIN + b"\nbody\n" + r.MULTICA_END + b"\n"
+        for original in (b"body", b"body\n", b"body\n\n\n", b"body  \n", b"body\r\n"):
+            clean, _ = r.strip_managed_context(original + b"\n\n" + block)
+            self.assertEqual(clean, original)
+        for malformed in (b"body\n" + block, b"body\n\n" + block + block, r.MULTICA_BEGIN + b"\nno end", b"body\n\n" + block.rstrip(b"\n")):
+            with self.assertRaises(ValueError):
+                r.strip_managed_context(malformed)
+
+    def test_managed_context_supports_git_crlf_conversion_without_ignoring_edits(self):
+        self.setup()
+        r.git(self.repo, "config", "core.autocrlf", "true")
+        original = (self.repo / "AGENTS.md").read_bytes().replace(b"\r\n", b"\n")
+        self.inject_managed_context(original.replace(b"\n", b"\r\n"))
+        self.assertEqual(self.run_script("pass")["status"], "succeeded")
+        content = (self.repo / "AGENTS.md").read_bytes()
+        (self.repo / "AGENTS.md").write_bytes(b"Human change.\r\n" + content)
+        with self.assertRaisesRegex(ValueError, "user changes"):
+            self.run_script("pass")
+
     def test_failure_has_terminal_evidence_and_never_reexecutes(self):
         self.setup()
         result = self.run_script("raise SystemExit(9)")
