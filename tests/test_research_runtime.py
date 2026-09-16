@@ -338,6 +338,9 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("artifact_evidence_error", result["failure_reason"])
 
     def test_export_failed_index_install_restores_both_files(self):
+        # Runtime canonicalizes the repository. Keep a deliberate lexical alias
+        # here to cover macOS /var vs /private/var and Windows temp aliases.
+        self.repo = self.repo / ".." / self.repo.name
         self.setup()
         record = self.run_script("import os,pathlib; pathlib.Path(os.environ['OUTPUT_ROOT'],'table.csv').write_text('result')")
         args = self.args("export", "--run-id", record["run_id"], "--file", "table.csv", "--kind", "tables", "--accepted-by", "accepted")
@@ -347,13 +350,17 @@ class RuntimeTests(unittest.TestCase):
         old_target, old_index = target.read_bytes(), index.read_bytes()
         args.replace = True
         original = os.replace
+        injected = []
+        self.assertNotEqual(index, index.resolve())
         def fail_index(source, dest):
-            if Path(source).name.startswith(".export-index-") and Path(dest) == index:
+            if Path(source).name.startswith(".export-index-") and Path(dest).resolve() == index.resolve():
+                injected.append(Path(dest))
                 raise OSError("synthetic install failure")
             return original(source, dest)
         with patch.object(os, "replace", side_effect=fail_index):
             with self.assertRaisesRegex(OSError, "install failure"):
                 r.export(args)
+        self.assertEqual(len(injected), 1)
         self.assertEqual(target.read_bytes(), old_target)
         self.assertEqual(index.read_bytes(), old_index)
 
