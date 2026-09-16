@@ -23,6 +23,14 @@ class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="research-runtime-test-", dir=os.environ.get("RESEARCH_TEST_TMPDIR"))
         self.base = Path(self.tmp.name)
+        if os.name == "nt":
+            # An elevated SSH process can own mkdtemp's OWNER RIGHTS ACL as
+            # Administrators. The scheduler deliberately uses a limited user
+            # token, so grant only this test's current user inherited access.
+            # Do not raise scheduler privileges to compensate for the fixture.
+            identity = subprocess.run(["whoami", "/user", "/fo", "csv", "/nh"], check=True, capture_output=True, text=True).stdout
+            sid = r.re.search(r"S-1-[0-9-]+", identity).group(0)
+            subprocess.run(["icacls.exe", str(self.base), "/grant", "*" + sid + ":(OI)(CI)F"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         self.repo = self.base / "checkout"
         # Reuse existing committed history; tests do not create commits or change identity policy.
         subprocess.run(["git", "clone", "--quiet", "--shared", str(SCRIPT.parents[1]), str(self.repo)], check=True)
@@ -350,6 +358,43 @@ class RuntimeTests(unittest.TestCase):
         result = r.deliver(self.args("deliver", "--issue-id", "00000000-0000-0000-0000-000000000123", "--artifact", str(self.repo / "README.md"), "--scope-complete", "--check", "full scope", "--research-impact", "documented", "--issue-revision", "7"))
         self.assertEqual(result["record"]["issue_revision"], 7)
         self.assertTrue(Path(result["delivery_path"]).name.startswith("research-delivery-"))
+
+    def prepare_review_draft(self):
+        self.setup()
+        return r.deliver(self.args("deliver", "--issue-id", "00000000-0000-0000-0000-000000000123", "--artifact", str(self.repo / "README.md"), "--scope-complete", "--check", "full scope", "--research-impact", "documented", "--review-required", "--draft"))
+
+    def finalization_args(self, draft):
+        return self.args("deliver", "--issue-id", "00000000-0000-0000-0000-000000000123", "--finalize", draft["delivery_path"], "--review-evidence", "00000000-0000-0000-0000-000000000456", "--issue-revision", "8")
+
+    def test_review_draft_finalize_preserves_identity_and_is_immutable(self):
+        draft = self.prepare_review_draft()
+        before = Path(draft["delivery_path"]).read_bytes()
+        self.assertEqual(draft["record"]["result"], "awaiting_review")
+        self.assertNotIn("issue_revision", draft["record"])
+        final = r.deliver(self.finalization_args(draft))
+        self.assertEqual(final["record"]["result"], "ready")
+        self.assertEqual(final["record"]["delivery_id"], draft["record"]["delivery_id"])
+        self.assertEqual(final["record"]["artifacts"], draft["record"]["artifacts"])
+        self.assertEqual(final["record"]["review"]["evidence"], {"comment_id": "00000000-0000-0000-0000-000000000456"})
+        self.assertEqual(Path(draft["delivery_path"]).read_bytes(), before)
+        with self.assertRaises(FileExistsError):
+            r.deliver(self.finalization_args(draft))
+
+    def test_review_finalize_rejects_changed_artifact(self):
+        draft = self.prepare_review_draft()
+        Path(draft["record"]["artifacts"][0]["path"]).write_text("changed after review")
+        with self.assertRaisesRegex(ValueError, "changed after preparation"):
+            r.deliver(self.finalization_args(draft))
+        self.assertFalse(Path(draft["delivery_path"].replace(".draft.json", ".json")).exists())
+
+    def test_review_draft_cannot_have_revision_and_finalize_needs_anchor(self):
+        draft = self.prepare_review_draft()
+        args = self.finalization_args(draft)
+        args.issue_revision = None
+        with self.assertRaisesRegex(ValueError, "issue-revision"):
+            r.deliver(args)
+        with self.assertRaisesRegex(ValueError, "cannot have revision"):
+            r.deliver(self.args("deliver", "--issue-id", "00000000-0000-0000-0000-000000000123", "--review-required", "--draft", "--issue-revision", "7"))
 
     def test_native_adapters_do_not_schedule_repeated_research(self):
         self.setup()

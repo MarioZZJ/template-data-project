@@ -633,15 +633,60 @@ def status(args):
     return {"asset_root": str(root), "runs": result, "notification_note": "Notification receipt is maintained by the independent bridge"}
 
 
+def write_delivery_once(path, value):
+    """Publish a complete immutable JSON file without an overwrite window."""
+    path = Path(path)
+    with locked(path.parent / ".delivery.lock"):
+        if path.exists():
+            raise FileExistsError("Final delivery already exists; immutable records cannot be overwritten")
+        atomic_json(path, value)
+
+
+def finalize_delivery(args, root):
+    if args.draft or args.artifact or args.check or args.run_id or args.research_impact or args.scope_complete or args.review_required:
+        raise ValueError("Finalize uses the unchanged draft; do not supply new scope, artifacts or checks")
+    if args.issue_revision is None or args.issue_revision < 0:
+        raise ValueError("Finalize requires a non-negative --issue-revision")
+    if not args.review_evidence:
+        raise ValueError("Finalize requires the independent review comment UUID")
+    uuid.UUID(args.review_evidence)
+    draft_path = Path(args.finalize).expanduser().resolve()
+    value = read_json(draft_path)
+    identifier = valid_name(value.get("delivery_id", ""))
+    expected = root / "deliveries" / (identifier + ".draft.json")
+    if draft_path != expected.resolve():
+        raise ValueError("Draft must be this project's canonical delivery draft")
+    if value.get("schema") != "research-delivery/v1" or value.get("result") != "awaiting_review" or not value.get("scope_complete") or not value.get("review", {}).get("required"):
+        raise ValueError("Not a complete delivery draft awaiting independent review")
+    if value.get("issue_id") != args.issue_id:
+        raise ValueError("Draft belongs to a different issue")
+    if not value.get("checks") or any(item.get("ok") is not True for item in value["checks"]) or not value.get("artifacts"):
+        raise ValueError("Draft is missing full-scope checks or artifacts")
+    for item in value["artifacts"]:
+        path = Path(item["path"]).resolve()
+        if not path.is_relative_to(root / "runs") and not path.is_relative_to(root / "deliveries"):
+            raise ValueError("Draft artifact is outside stable project assets")
+        if not path.is_file() or digest(path) != item.get("sha256"):
+            raise ValueError("Draft artifact changed after preparation; create and review a new draft")
+    value.update(result="ready", issue_revision=args.issue_revision, finalized_at=now(), review={"required": True, "passed": True, "evidence": {"comment_id": args.review_evidence}})
+    path = root / "deliveries" / (identifier + ".json")
+    write_delivery_once(path, value)
+    return {"delivery_path": str(path), "record": value, "next_action": "Post the final attachment through the active agent execution; the bridge verifies the reviewer and revision."}
+
+
 def deliver(args):
     _, root, _ = locate(args)
     uuid.UUID(args.issue_id)
+    if args.finalize:
+        return finalize_delivery(args, root)
+    if args.draft and (not args.review_required or args.issue_revision is not None or args.review_evidence):
+        raise ValueError("--draft requires --review-required and cannot have revision or completed review evidence")
     if not args.scope_complete:
         raise ValueError("A ready delivery requires --scope-complete after checking the full task")
-    if not args.check or not args.artifact:
-        raise ValueError("A delivery requires at least one artifact and named completed check")
-    if args.review_required and not args.review_evidence:
-        raise ValueError("Required independent review needs --review-evidence")
+    if not args.check or not args.artifact or not args.research_impact:
+        raise ValueError("A delivery requires artifacts, named completed checks and research impact")
+    if args.review_required and not args.review_evidence and not args.draft:
+        raise ValueError("Required independent review needs --draft followed by --finalize with --review-evidence")
     if args.run_id:
         record = read_json(run_record(root, args.run_id))
         if record["status"] != "succeeded" or not record.get("finished_at") or record.get("exit_code") != 0:
@@ -663,18 +708,18 @@ def deliver(args):
             path = artifact_directory / (f"{number:03d}-" + source.name)
             shutil.copy2(source, path)
         artifacts.append({"path": str(path), "source_path": str(source), "sha256": digest(path), "size": path.stat().st_size})
-    value = {"schema": "research-delivery/v1", "delivery_id": identifier, "issue_id": args.issue_id, "run_id": args.run_id, "result": "ready", "scope_complete": True, "artifacts": artifacts, "checks": [{"name": name, "ok": True} for name in args.check], "research_impact": args.research_impact, "review": {"required": args.review_required, "passed": bool(args.review_evidence), "evidence": args.review_evidence}, "created_at": now()}
+    evidence = args.review_evidence
+    if args.review_required and evidence:
+        uuid.UUID(evidence)
+        evidence = {"comment_id": evidence}
+    value = {"schema": "research-delivery/v1", "delivery_id": identifier, "issue_id": args.issue_id, "run_id": args.run_id, "result": "awaiting_review" if args.draft else "ready", "scope_complete": True, "artifacts": artifacts, "checks": [{"name": name, "ok": True} for name in args.check], "research_impact": args.research_impact, "review": {"required": args.review_required, "passed": bool(args.review_evidence), "evidence": evidence}, "created_at": now()}
     if args.issue_revision is not None:
         if args.issue_revision < 0:
             raise ValueError("Issue revision must be non-negative")
         value["issue_revision"] = args.issue_revision
-    path = root / "deliveries" / (identifier + ".json")
-    with path.open("x", encoding="utf-8") as handle:
-        json.dump(value, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
-        handle.flush()
-        os.fsync(handle.fileno())
-    return {"delivery_path": str(path), "record": value, "next_action": "Post through the active agent execution. The bridge independently verifies source identity, latest comment and issue revision."}
+    path = root / "deliveries" / (identifier + (".draft.json" if args.draft else ".json"))
+    write_delivery_once(path, value)
+    return {"delivery_path": str(path), "record": value, "next_action": "Request independent review of this exact draft; do not submit it as ready." if args.draft else "Post through the active agent execution. The bridge independently verifies source identity, latest comment and issue revision."}
 
 
 def export(args):
@@ -799,7 +844,10 @@ def parser():
     p.add_argument("--issue-revision", type=int, help="Expected revision immediately after posting this delivery; bridge verifies it")
     p.add_argument("--artifact", action="append", default=[], help="Existing artifact file; repeatable")
     p.add_argument("--check", action="append", default=[], help="Named check actually passed; repeatable")
-    p.add_argument("--research-impact", required=True)
+    p.add_argument("--research-impact", help="Required when preparing a delivery or draft")
+    group = p.add_mutually_exclusive_group()
+    group.add_argument("--draft", action="store_true", help="Prepare immutable artifacts for independent review; not ready for closure")
+    group.add_argument("--finalize", metavar="DRAFT", help="Finalize the unchanged reviewed draft once with revision and review comment UUID")
     p.add_argument("--scope-complete", action="store_true")
     p.add_argument("--review-required", action="store_true")
     p.add_argument("--review-evidence", default="")
