@@ -25,7 +25,7 @@ python scripts/research.py context --issue-id <issue-uuid>
 python scripts/research.py checkpoint --file <explicit-project-file>
 python scripts/research.py run --issue-id <issue-uuid> --entry <registered-entry> --request-key <stable-intent-key> -- <command> <arguments>
 python scripts/research.py status <run-id>
-python scripts/research.py deliver --issue-id <issue-uuid> --artifact <path> --check <check-name> --research-impact <text> --scope-complete
+python scripts/research.py deliver --issue-id <issue-uuid> --context-ref <context-receipt> --artifact <path> --check <check-name> --research-impact <text> --scope-complete
 python scripts/research.py export --run-id <run-id> --file <relative-output> --kind figures --accepted-by <acceptance-reference>
 ```
 

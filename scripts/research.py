@@ -23,6 +23,15 @@ import uuid
 import venv
 
 SCHEMA = "research-run/v1"
+SERVICE_LIMIT = 8 * 1024 * 1024
+
+
+class ServiceUnavailable(RuntimeError):
+    """No trustworthy service reply was received; never fall back to execution."""
+
+
+class ServiceRejected(RuntimeError):
+    """The registered service explicitly rejected a request."""
 
 
 def now():
@@ -255,11 +264,286 @@ def supervisor_available(kind):
 
 
 def setup(args):
-    repo, root, _ = locate(args, create=True)
+    repo, root, entry = locate(args, create=True)
     env = prepare_env(repo, root, args.stdlib, args.extra)
     atomic_json(root / "environment.json", {"stdlib": args.stdlib, "extras": args.extra, "environment_dir": str(env)})
     supervisor = platform_supervisor()
-    return {"asset_root": str(root), "environment_dir": str(env), "supervisor": supervisor, "supervisor_available": supervisor_available(supervisor), "note": "Native platform availability is not an end-to-end run test"}
+    updates = {}
+    if args.harness:
+        updates["harness_version"] = 4 if args.harness == "v4" else 1
+    if args.service_socket:
+        updates["service_socket"] = str(Path(args.service_socket).expanduser().resolve())
+        updates["harness_version"] = 4
+    if args.project_id:
+        uuid.UUID(args.project_id)
+        updates["project_id"] = args.project_id
+    if args.multica_cwd:
+        cwd = Path(args.multica_cwd).expanduser().resolve()
+        if not cwd.is_dir():
+            raise ValueError("Multica CLI directory must exist")
+        updates["multica_cwd"] = str(cwd)
+    if args.executor_agent_id:
+        for agent in args.executor_agent_id:
+            uuid.UUID(agent)
+        updates["executor_agent_ids"] = sorted(set(args.executor_agent_id))
+    if updates:
+        home = Path(args.assets_home).expanduser().resolve()
+        with locked(home / ".projects.lock"):
+            registry = read_json(home / "projects.json")
+            for item in registry["projects"]:
+                if item["name"] == entry["name"] and item["asset_root"] == str(root):
+                    item.update(updates)
+                    entry = item
+                    break
+            atomic_json(home / "projects.json", registry)
+    result = {"asset_root": str(root), "environment_dir": str(env), "supervisor": supervisor,
+              "supervisor_available": supervisor_available(supervisor),
+              "harness_version": 4 if service_enabled(args, entry) else 1,
+              "note": "Native platform availability is not an end-to-end run test"}
+    if service_enabled(args, entry):
+        try:
+            result["service"] = service_request(args, entry, "capabilities", {"project_id": entry.get("project_id")})
+            result["service_available"] = True
+        except (ServiceUnavailable, ServiceRejected):
+            result.update(service_available=False, not_ready=["Registered research service is unavailable; formal run is disabled"])
+    return result
+
+
+def project_config(args):
+    """Read atomic registry data without creating directories or lock files."""
+    repo = repository(args.repo)
+    path = Path(args.assets_home).expanduser().resolve() / "projects.json"
+    if not path.is_file():
+        return repo, {}
+    origin, common = origin_identity(repo), common_dir(repo)
+    matches = [entry for entry in read_json(path).get("projects", [])
+               if (origin and origin in entry.get("origins", [])) or common in entry.get("git_common_dirs", [])]
+    if len(matches) > 1:
+        raise RuntimeError("Origin and checkout map to different projects; resolve projects.json explicitly")
+    return repo, matches[0] if matches else {}
+
+
+def service_socket(args, entry):
+    return os.environ.get("RESEARCHD_SOCKET") or getattr(args, "service_socket", None) or entry.get("service_socket")
+
+
+def service_enabled(args, entry):
+    return entry.get("harness_version") == 4 or bool(service_socket(args, entry))
+
+
+def service_request(args, entry, operation, payload):
+    path = service_socket(args, entry)
+    if not path or not hasattr(socket, "AF_UNIX"):
+        raise ServiceUnavailable("Registered research service is unavailable")
+    request = json.dumps({"operation": operation, "payload": payload}, ensure_ascii=False).encode("utf-8") + b"\n"
+    if len(request) > SERVICE_LIMIT:
+        raise ValueError("Research service request exceeds the size limit")
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(30)
+            connection.connect(str(Path(path).expanduser()))
+            connection.sendall(request)
+            reply = bytearray()
+            while b"\n" not in reply:
+                block = connection.recv(min(65536, SERVICE_LIMIT + 1 - len(reply)))
+                if not block:
+                    raise ServiceUnavailable("Research service closed without a complete reply; reconcile before retrying")
+                reply.extend(block)
+                if len(reply) > SERVICE_LIMIT:
+                    raise ServiceUnavailable("Research service reply exceeds the size limit")
+        value = json.loads(bytes(reply).split(b"\n", 1)[0])
+    except (OSError, ValueError) as exc:
+        raise ServiceUnavailable("Research service request outcome is unknown; reconcile before retrying") from exc
+    if not isinstance(value, dict) or not isinstance(value.get("ok"), bool):
+        raise ServiceUnavailable("Research service reply has no valid outcome")
+    if not value["ok"]:
+        # Server diagnostics may contain private paths or configuration; leave them in its local log.
+        error = value.get("error")
+        code = error.get("code") if isinstance(error, dict) else error if isinstance(error, str) else None
+        suffix = ": " + code if isinstance(code, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", code) else ""
+        raise ServiceRejected("Research service rejected the request" + suffix + "; inspect its local evidence")
+    return value.get("result")
+
+
+def cli_json(args, entry, *argv):
+    directory = getattr(args, "multica_cwd", None) or os.environ.get("MULTICA_CLI_CWD") or entry.get("multica_cwd") or args.repo
+    try:
+        result = subprocess.run(["multica", *argv, "--output", "json"], cwd=directory,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("Multica read failed; inspect the configured CLI directory and login locally") from exc
+    if result.returncode or len(result.stdout) > SERVICE_LIMIT:
+        raise RuntimeError("Multica read failed or exceeded the size limit; no credentials were printed")
+    try:
+        return json.loads(result.stdout)
+    except ValueError as exc:
+        raise RuntimeError("Multica read did not return valid JSON") from exc
+
+
+def selected_fields(value, fields):
+    return {key: value[key] for key in fields if key in value}
+
+
+def context(args):
+    repo, entry = project_config(args)
+    issue_id = args.issue_id or os.environ.get("MULTICA_ISSUE_ID")
+    if not issue_id:
+        raise ValueError("context requires --issue-id or the current MULTICA_ISSUE_ID")
+    warnings = []
+    remote = None
+    if service_enabled(args, entry):
+        payload = {"project_id": entry.get("project_id"), "issue_id": issue_id}
+        source_id = args.source_run_id or os.environ.get("MULTICA_TASK_ID")
+        if source_id:
+            uuid.UUID(source_id)
+            payload["source_run_id"] = source_id
+        try:
+            remote = service_request(args, entry, "context", payload)
+        except (ServiceUnavailable, ServiceRejected):
+            warnings.append("Service context unavailable; platform facts were read using the native CLI")
+    # Include platform source text even when the service currently returns only job metadata.
+    if isinstance(remote, dict) and remote.get("issue") and isinstance(remote.get("comments"), list):
+        if entry.get("project_id") and remote["issue"].get("project_id") != entry["project_id"]:
+            raise ValueError("Service issue does not belong to the registered project")
+        platform = {key: remote[key] for key in ("issue", "comments", "upstream", "policy", "policy_sha256", "paused", "jobs", "events", "plans", "context_ref", "context_receipt_id", "contract_context") if key in remote}
+        platform["parents"] = remote.get("parents", remote.get("ancestors", []))
+        runs = remote.get("active_runs", remote.get("task_runs", []))
+        platform["active_runs"] = [run for run in runs if run.get("status") in {"queued", "dispatched", "running", "waiting_local_directory"}]
+        agents = remote.get("eligible_executors", remote.get("available_agents", []))
+        # The service already filters its project policy; a local narrower allowlist is still respected.
+        allowed = set(entry.get("executor_agent_ids", [])) or {agent.get("id") for agent in agents}
+        platform["eligible_executors"] = [selected_fields(agent, ("id", "name", "role", "runtime_id", "model", "reasoning_effort", "status", "updated_at"))
+                                         for agent in agents if agent.get("id") in allowed]
+        source = "researchd"
+    else:
+        issue_fields = ("id", "identifier", "title", "description", "status", "status_name", "revision", "updated_at",
+                        "parent_issue_id", "project_id", "assignee_id", "assignee_type", "stage")
+        comment_fields = ("id", "parent_id", "content", "author_id", "author_type", "source_task_id", "created_at", "updated_at", "revision", "resolved_at")
+        issue = cli_json(args, entry, "issue", "get", issue_id)
+        if not isinstance(issue, dict) or not issue.get("id"):
+            raise RuntimeError("Platform returned no current issue identity")
+        if entry.get("project_id") and issue.get("project_id") != entry["project_id"]:
+            raise ValueError("Current issue does not belong to the registered project")
+        comments = cli_json(args, entry, "issue", "comment", "list", issue["id"], "--full")
+        runs = cli_json(args, entry, "issue", "runs", issue["id"], "--active")
+        if not isinstance(comments, list) or not isinstance(runs, list):
+            raise RuntimeError("Platform comments or active runs have an unsupported shape")
+        parents, parent_id, seen = [], issue.get("parent_issue_id"), {issue["id"]}
+        while parent_id:
+            if parent_id in seen:
+                raise RuntimeError("Platform parent relationship contains a cycle")
+            if len(parents) >= 16:
+                raise RuntimeError("Platform parent chain exceeds 16 ancestors; complete authorization context was not returned")
+            seen.add(parent_id)
+            parent = cli_json(args, entry, "issue", "get", parent_id)
+            parent_comments = cli_json(args, entry, "issue", "comment", "list", parent_id, "--full")
+            if not isinstance(parent, dict) or not isinstance(parent_comments, list):
+                raise RuntimeError("Parent contract source has an unsupported shape")
+            parents.append({"issue": selected_fields(parent, issue_fields),
+                            "comments": [selected_fields(item, comment_fields) for item in parent_comments]})
+            parent_id = parent.get("parent_issue_id")
+        executors = []
+        allowed = set(entry.get("executor_agent_ids", []))
+        if allowed:
+            agents = cli_json(args, entry, "agent", "list")
+            if not isinstance(agents, list):
+                raise RuntimeError("Platform agent list has an unsupported shape")
+            executors = [selected_fields(agent, ("id", "name", "status", "runtime_id", "model", "updated_at"))
+                         for agent in agents if agent.get("id") in allowed]
+        else:
+            warnings.append("No research executor allowlist is registered; no workspace agents were exposed")
+        platform = {"issue": selected_fields(issue, issue_fields),
+                    "comments": [selected_fields(item, comment_fields) for item in comments], "parents": parents,
+                    "active_runs": [selected_fields(run, ("id", "issue_id", "agent_id", "runtime_id", "status", "trigger_comment_id", "coalesced_comment_ids", "created_at", "started_at")) for run in runs],
+                    "eligible_executors": executors}
+        source = "multica-cli"
+    plan = repo / "docs/plans/research-plan.md"
+    plan_ref = {"path": "docs/plans/research-plan.md", "available": plan.is_file()}
+    if plan.is_file():
+        plan_ref.update(sha256=digest(plan), content=plan.read_text(encoding="utf-8"))
+    else:
+        warnings.append("Research plan was not found in this checkout")
+    if service_enabled(args, entry) and not platform.get("context_ref"):
+        warnings.append("No source-bound contract-read receipt is available; this read cannot authorize automatic delivery")
+    return {"schema": "research-context/v4", "read_at": now(), "source": source,
+            **platform, "research_plan": plan_ref, "service_context": remote if source != "researchd" else None,
+            "warnings": warnings, "note": "Read-only current sources; this snapshot does not grant authorization or prove scientific readiness"}
+
+
+def checkpoint(args):
+    repo, root, _ = locate(args)
+    paths = []
+    for raw in args.file:
+        path = Path(raw)
+        if path.is_absolute() or ".." in path.parts or not path.parts:
+            raise ValueError("Checkpoint files must be explicit repository-relative paths")
+        target = repo / path
+        if not target.resolve().is_relative_to(repo) or target.is_symlink() or target.is_dir():
+            raise ValueError("Checkpoint requires individual files inside the repository, not directories or links")
+        resolved_parts = target.resolve().relative_to(repo).parts
+        if any(part in {".git", ".multica"} or part == ".env" or part.startswith(".env.") for part in (*path.parts, *resolved_parts)):
+            raise ValueError("Credential/configuration paths cannot be checkpoint files")
+        if not target.is_file():
+            git(repo, "ls-files", "--error-unmatch", "--", path.as_posix())
+        relative = path.as_posix()
+        if relative not in paths:
+            paths.append(relative)
+    if not paths:
+        raise ValueError("Checkpoint requires at least one explicit --file")
+    commit = git(repo, "rev-parse", "HEAD")
+    if args.commit:
+        if not args.message_file:
+            raise ValueError("--commit requires --message-file with verified model and agent attribution")
+        rules = Path.home() / ".agents/rules/common/git-attribution.md"
+        if not rules.is_file():
+            raise ValueError("Local Git attribution rules are unavailable; preserve a patch without committing")
+        rules.read_text(encoding="utf-8")
+        if any(key.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_")) for key in os.environ):
+            raise ValueError("Checkpoint cannot use environment overrides for the user's Git identity")
+        message = Path(args.message_file).expanduser().read_text(encoding="utf-8")
+        if len(re.findall(r"^Model: \S.+$", message, re.M)) != 1:
+            raise ValueError("Commit message requires exactly one verified full Model line")
+        trailers = re.findall(r"^Co-authored-by: (.+)$", message, re.M)
+        agents = {"Codex": "Codex <noreply@openai.com>", "Claude": "Claude <noreply@anthropic.com>",
+                  "Reasonix": "Reasonix <noreply@reasonix.io>", "dsh": "dsh <noreply@deepseek.com>"}
+        if trailers.count(agents[args.agent]) != 1 or not re.search(r"^Model: .+\n\nCo-authored-by:", message, re.M):
+            raise ValueError("Commit message requires the current agent trailer exactly once, separated from Model by a blank line")
+        if not git(repo, "config", "user.name") or not git(repo, "config", "user.email"):
+            raise ValueError("User Git identity must already be configured")
+        # --only preserves unrelated staged changes. New files must first be deliberately staged by the caller.
+        git(repo, "ls-files", "--error-unmatch", "--", *paths)
+        git(repo, "commit", "--only", "--file", str(Path(args.message_file).expanduser().resolve()), "--", *paths)
+        saved = git(repo, "rev-parse", "HEAD")
+        return {"schema": "research-checkpoint/v4", "kind": "git_commit", "committed": True,
+                "code_ref": {"kind": "git_commit", "identity": saved}, "base_commit": commit,
+                "files": paths, "attribution_rules_sha256": digest(rules), "pushed": False}
+    if args.message_file:
+        raise ValueError("--message-file is only used with explicit --commit")
+    identifier = "checkpoint-" + uuid.uuid4().hex
+    directory = root / "checkpoints" / identifier
+    directory.mkdir(parents=True)
+    files = []
+    for index, relative in enumerate(paths):
+        source = repo / relative
+        item = {"path": relative, "exists": source.is_file()}
+        if source.is_file():
+            destination = directory / "files" / str(index)
+            destination.parent.mkdir(exist_ok=True)
+            shutil.copy2(source, destination)
+            item.update(content_path=str(destination), sha256=digest(destination))
+        else:
+            # A missing untracked path is almost certainly a typo, not an intentional deletion.
+            git(repo, "ls-files", "--error-unmatch", "--", relative)
+        files.append(item)
+    patch = subprocess.run(["git", "-C", str(repo), "diff", "--binary", "HEAD", "--", *paths],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
+    (directory / "changes.patch").write_bytes(patch)
+    record = {"schema": "research-checkpoint/v4", "checkpoint_id": identifier, "kind": "patch", "committed": False,
+              "base_commit": commit, "created_at": now(), "files": files, "patch_path": str(directory / "changes.patch"),
+              "patch_sha256": digest(directory / "changes.patch"), "pushed": False,
+              "note": "Uncommitted recovery evidence only; not an approved runnable code snapshot"}
+    atomic_json(directory / "checkpoint.json", record)
+    return record
 
 
 def snapshot(repo, commit, destination):
@@ -395,6 +679,60 @@ def clean_code_context(repo):
 
 
 def run(args):
+    repo, entry = project_config(args)
+    if not service_enabled(args, entry):
+        return legacy_run(args)
+    if args.foreground:
+        raise ValueError("A v4 project cannot bypass its registered service with --foreground")
+    if not args.issue_id or not args.entry or not args.request_key:
+        raise ValueError("A v4 run requires --issue-id, --entry and a stable --request-key")
+    project_id = args.project_id or entry.get("project_id")
+    agent_id = args.receiver_agent_id or os.environ.get("MULTICA_AGENT_ID")
+    source_id = args.source_run_id or os.environ.get("MULTICA_TASK_ID")
+    if not project_id or not agent_id or not source_id:
+        raise ValueError("A v4 run requires registered project identity and actual receiver/source-run identities")
+    for identifier in (project_id, args.issue_id, agent_id, source_id):
+        uuid.UUID(identifier)
+    if entry.get("project_id") and project_id != entry["project_id"]:
+        raise ValueError("Requested project differs from the local registered project")
+    if not entry.get("asset_root"):
+        raise ValueError("Project has not been initialized; run setup first")
+    excluded_context = clean_code_context(repo)
+    if "160000 " in git(repo, "ls-files", "--stage"):
+        raise ValueError("Submodules require an explicitly fixed snapshot strategy")
+    parameters = json.loads(args.parameters_json) if args.parameters_json else {}
+    if not isinstance(parameters, dict):
+        raise ValueError("Service parameters must be a JSON object")
+    command = list(args.command)
+    if command and command[0] == "--":
+        command.pop(0)
+    if any(str(repo) in argument for argument in command):
+        raise ValueError("Command references the disposable checkout; use snapshot-relative paths")
+    root = Path(entry["asset_root"])
+    environment = read_json(root / "environment.json")
+    payload = {"project_id": project_id, "issue_id": args.issue_id, "entry": args.entry,
+               "request_key": args.request_key, "parameters": parameters, "receiver_agent_id": agent_id,
+               "source_run_id": source_id, "repo": str(repo), "asset_root": str(root),
+               "environment_dir": environment["environment_dir"],
+               "code_ref": {"kind": "git_commit", "identity": git(repo, "rev-parse", "HEAD")},
+               "inputs": inputs_for(root, args.input), "excluded_context": excluded_context}
+    if command:
+        payload["command"] = command
+    # A caller can tighten an existing policy; the service remains the authority for all limits.
+    if args.deadline:
+        parse_deadline(args.deadline)
+        payload["deadline"] = args.deadline
+    if args.budget_json:
+        raise ValueError("v4 budgets are registered service policy; --budget-json cannot grant an allowance")
+    if args.attempt_limit != 1:
+        raise ValueError("v4 retry limits belong to registered service policy; client overrides are not supported")
+    receipt = service_request(args, entry, "submit", payload)
+    if not isinstance(receipt, dict) or receipt.get("accepted") is not True or not receipt.get("job_id"):
+        raise ServiceUnavailable("No durable accepted job receipt; reconcile the original request key before retrying")
+    return receipt
+
+
+def legacy_run(args):
     repo, root, _ = locate(args)
     command = list(args.command)
     if command and command[0] == "--":
@@ -637,6 +975,28 @@ def run_record(root, run_id):
 
 
 def status(args):
+    _, entry = project_config(args)
+    if service_enabled(args, entry) and not args.dashboard_from:
+        if args.reconcile:
+            raise ValueError("v4 recovery belongs to the service; status remains read-only")
+        payload = {"project_id": entry.get("project_id")}
+        issue_id = args.issue_id or os.environ.get("MULTICA_ISSUE_ID")
+        if issue_id:
+            payload["issue_id"] = issue_id
+        if args.run_id:
+            payload["job_id"] = args.run_id
+        try:
+            return {"source": "researchd", "service_available": True,
+                    "evidence": service_request(args, entry, "status", payload)}
+        except (ServiceUnavailable, ServiceRejected):
+            result = legacy_status(args)
+            result.update(service_available=False, source="local-run-records",
+                          warning="Service unavailable; local records do not establish notification or consumption state")
+            return result
+    return legacy_status(args)
+
+
+def legacy_status(args):
     repo, root, _ = locate(args)
     if args.dashboard_from:
         snapshot_data = read_json(args.dashboard_from)
@@ -726,16 +1086,50 @@ def finalize_delivery(args, root):
         if not path.is_file() or digest(path) != item.get("sha256"):
             raise ValueError("Draft artifact changed after preparation; create and review a new draft")
     value.update(result="ready", issue_revision=args.issue_revision, finalized_at=now(), review={"required": True, "passed": True, "evidence": {"comment_id": args.review_evidence}})
+    if args.context_ref:
+        value["context_ref"] = args.context_ref
     path = root / "deliveries" / (identifier + ".json")
     write_delivery_once(path, value)
     return {"delivery_path": str(path), "record": value, "next_action": "Post the final attachment through the active agent execution; the bridge verifies the reviewer and revision."}
 
 
 def deliver(args):
-    _, root, _ = locate(args)
+    repo, root, entry = locate(args)
     uuid.UUID(args.issue_id)
+    if args.submit_comment_id or args.consume_event:
+        if not service_enabled(args, entry) or not entry.get("project_id"):
+            raise ValueError("Service delivery actions require a registered v4 project")
+        if args.artifact or args.check or args.research_impact or args.scope_complete or args.review_required or args.review_evidence or args.issue_revision is not None or args.run_id or args.context_ref:
+            raise ValueError("Service delivery actions do not create a new local delivery; omit record-building options")
+        payload = {"project_id": entry["project_id"], "issue_id": args.issue_id}
+        if args.submit_comment_id:
+            if args.evidence_path or args.judgment or args.next_action or args.source_run_id:
+                raise ValueError("Result-consumption options belong only to --consume-event")
+            uuid.UUID(args.submit_comment_id)
+            payload["comment_id"] = args.submit_comment_id
+            return {"operation": "register_delivery", "result": service_request(args, entry, "deliver", payload),
+                    "note": "Registration is not completion; the service must verify source termination and current evidence"}
+        source_id = args.source_run_id or os.environ.get("MULTICA_TASK_ID")
+        if not source_id or not args.evidence_path or not args.judgment or not args.next_action:
+            raise ValueError("--consume-event requires actual source-run identity, stable evidence, judgment and next action")
+        uuid.UUID(source_id)
+        evidence = Path(args.evidence_path).expanduser().resolve()
+        if not evidence.is_file() or not evidence.is_relative_to(root):
+            raise ValueError("Result-consumption evidence must be a stable file under this project's asset root")
+        payload.update(event_id=args.consume_event, source_run_id=source_id, evidence_path=str(evidence),
+                       judgment=args.judgment, next_action=args.next_action)
+        return {"operation": "consume_result", "result": service_request(args, entry, "consume", payload),
+                "note": "Result consumption is not final research delivery or scientific acceptance"}
+    if args.evidence_path or args.judgment or args.next_action or args.source_run_id:
+        raise ValueError("Result-consumption options require --consume-event")
+    if service_enabled(args, entry) and not args.context_ref:
+        raise ValueError("A v4 delivery requires --context-ref from this source task's actual service context read")
     if args.finalize:
         return finalize_delivery(args, root)
+    code_ref = None
+    if service_enabled(args, entry):
+        clean_code_context(repo)
+        code_ref = {"kind": "git_commit", "identity": git(repo, "rev-parse", "HEAD")}
     if args.draft and (not args.review_required or args.issue_revision is not None or args.review_evidence):
         raise ValueError("--draft requires --review-required and cannot have revision or completed review evidence")
     if not args.scope_complete:
@@ -770,6 +1164,10 @@ def deliver(args):
         uuid.UUID(evidence)
         evidence = {"comment_id": evidence}
     value = {"schema": "research-delivery/v1", "delivery_id": identifier, "issue_id": args.issue_id, "run_id": args.run_id, "result": "awaiting_review" if args.draft else "ready", "scope_complete": True, "artifacts": artifacts, "checks": [{"name": name, "ok": True} for name in args.check], "research_impact": args.research_impact, "review": {"required": args.review_required, "passed": bool(args.review_evidence), "evidence": evidence}, "created_at": now()}
+    if code_ref:
+        value["code_ref"] = code_ref
+    if args.context_ref:
+        value["context_ref"] = args.context_ref
     if args.issue_revision is not None:
         if args.issue_revision < 0:
             raise ValueError("Issue revision must be non-negative")
@@ -882,6 +1280,20 @@ def parser():
     p.add_argument("--asset-root", help="Explicit asset root on a user-selected disk")
     p.add_argument("--stdlib", action="store_true", help="Dependency-free demonstration only; do not sync project dependencies")
     p.add_argument("--extra", action="append", default=[], help="Optional uv dependency extra (repeatable)")
+    p.add_argument("--harness", choices=["legacy", "v4"], help="Explicitly select legacy native execution or the v4 registered service")
+    p.add_argument("--service-socket", help="Register an absolute Unix socket path; enables v4")
+    p.add_argument("--project-id", help="Register this project's Multica UUID")
+    p.add_argument("--multica-cwd", help="Directory authorized for native Multica CLI reads")
+    p.add_argument("--executor-agent-id", action="append", default=[], help="Allowed research executor UUID; repeatable, excludes unrelated workspace members")
+    p = sub.add_parser("context", help="Read current contracts, edited comments and service evidence; never changes platform state")
+    p.add_argument("--issue-id", help="Issue UUID or identifier; defaults to MULTICA_ISSUE_ID")
+    p.add_argument("--source-run-id", help="Current task UUID for a verifiable contract-read receipt; defaults to MULTICA_TASK_ID")
+    p.add_argument("--multica-cwd", help="Directory authorized for native Multica CLI reads")
+    p = sub.add_parser("checkpoint", help="Save explicit file recovery evidence, or an explicitly requested attributed local commit")
+    p.add_argument("--file", action="append", required=True, help="Individual repository-relative file; repeatable, no directory-wide staging")
+    p.add_argument("--commit", action="store_true", help="Explicitly commit only the listed tracked files; never pushes")
+    p.add_argument("--message-file", help="Reviewed UTF-8 message with verified full Model identity and current agent trailer")
+    p.add_argument("--agent", choices=["Codex", "Claude", "Reasonix", "dsh"], default="Codex", help="Current committing agent for local attribution validation")
     p = sub.add_parser("run", help="Submit one committed step to the native persistent supervisor")
     p.add_argument("--issue-id", help="Multica issue UUID; optional for local demonstrations")
     p.add_argument("--input", action="append", default=[], help="Fixed file NAME=PATH; use a manifest for a dataset")
@@ -889,9 +1301,16 @@ def parser():
     p.add_argument("--attempt-limit", type=int, default=1, help="Recorded limit; runtime never resubmits calculation automatically")
     p.add_argument("--budget-json", help="Resource budget metadata; cost enforcement belongs to the research command")
     p.add_argument("--foreground", action="store_true", help="Synchronous diagnostics; not a detached persistent job")
+    p.add_argument("--entry", help="v4 registered service entry; arbitrary commands are not permitted")
+    p.add_argument("--request-key", help="Stable v4 submission intent key; preserve it when an outcome is unknown")
+    p.add_argument("--parameters-json", help="v4 registered entry parameters as a JSON object")
+    p.add_argument("--project-id", help="v4 project UUID; defaults to the local registration")
+    p.add_argument("--receiver-agent-id", help="Actual result receiver UUID; defaults to MULTICA_AGENT_ID")
+    p.add_argument("--source-run-id", help="Actual originating task UUID; defaults to MULTICA_TASK_ID")
     p.add_argument("command", nargs=argparse.REMAINDER, help="Command argv after --; never put credentials in argv")
     p = sub.add_parser("status", help="Read real run evidence; optionally render an explicit Multica snapshot")
     p.add_argument("run_id", nargs="?")
+    p.add_argument("--issue-id", help="v4 issue UUID used to query service status")
     p.add_argument("--dashboard-from", help="Multica snapshot JSON: source_url, generated_at, issues")
     p.add_argument("--dashboard", default="DASHBOARD.md")
     p.add_argument("--reconcile", action="store_true", help="Record proven abandoned local jobs as failed; never restart computation")
@@ -905,9 +1324,16 @@ def parser():
     group = p.add_mutually_exclusive_group()
     group.add_argument("--draft", action="store_true", help="Prepare immutable artifacts for independent review; not ready for closure")
     group.add_argument("--finalize", metavar="DRAFT", help="Finalize the unchanged reviewed draft once with revision and review comment UUID")
+    group.add_argument("--submit-comment-id", metavar="COMMENT", help="Register an already posted source delivery comment with the v4 service; does not impersonate its author")
+    group.add_argument("--consume-event", metavar="EVENT", help="Record evidence-based result consumption with the v4 service; not a final delivery")
     p.add_argument("--scope-complete", action="store_true")
     p.add_argument("--review-required", action="store_true")
     p.add_argument("--review-evidence", default="")
+    p.add_argument("--context-ref", help="v4 service receipt from this source task's actual contract read; required for draft, final and reviewed finalization")
+    p.add_argument("--source-run-id", help="Actual consuming task UUID; defaults to MULTICA_TASK_ID")
+    p.add_argument("--evidence-path", help="Stable result-consumption evidence file under the registered asset root")
+    p.add_argument("--judgment", help="Research judgment made from the consumed result")
+    p.add_argument("--next-action", help="Actual next action following result consumption")
     p = sub.add_parser("export", help="Select an accepted run artifact for Git-tracked paper output")
     p.add_argument("--run-id", required=True)
     p.add_argument("--file", required=True, help="Artifact path relative to run outputs/")

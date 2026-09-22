@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - scripts/research.py
-      - tests/test_research_runtime.py
+      - tests/test_research*.py
       - pyproject.toml
       - uv.lock
       - .github/workflows/research-runtime.yml

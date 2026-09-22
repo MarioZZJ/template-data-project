@@ -23,12 +23,14 @@ python scripts/research.py setup --extra mssql
 ### `context`：读取当前事实
 
 ```text
-python scripts/research.py context --issue-id <issue-uuid>
+python scripts/research.py context --issue-id <issue-uuid> --source-run-id <current-task-uuid>
 ```
 
 优先使用登记服务；服务不可用或未返回平台合同原文时，回退原生 Multica CLI 的只读查询，读取当前 issue、父级合同、全部线程及编辑后的意见、活跃执行和研究计划入口。使用 `--multica-cwd` 或 `MULTICA_CLI_CWD` 指定本机允许的 CLI 目录。执行者列表只取登记的研究成员白名单，不返回运维成员或运行时凭据。
 
 输出来源和未取得项，不把不完整上下文称为有效授权。派生快照不能代替必要原文；新意见与编辑内容均按当前数据读取，不仅依据 created_at 增量。
+
+在真实来源执行中读取服务上下文会返回 `context_ref`，固定当时的父级合同、相关计划和政策版本。正式交付引用本来源执行的这个回执；服务不可用时的 CLI 回退只提供事实，不伪造回执。父级决定或计划改变后须重新读懂当前要求再形成新交付，不能在发布时只抓最新版本冒充此前已读。
 
 ### `checkpoint`：保存明确范围
 
@@ -77,18 +79,27 @@ python scripts/research.py status --dashboard-from <multica-snapshot.json> --das
 2. 准备交付，`--issue-revision` 填写 `R + 2`：上传这一份新 JSON 附件增加一次版本，创建评论再增加一次版本。此计算只适用于读取 `R` 后恰好新增一份附件的默认流程。
 
 ```text
-python scripts/research.py deliver --issue-id <issue-uuid> --run-id <run-id> --artifact <artifact-path> --check <completed-check> --research-impact <explanation> --scope-complete --issue-revision <R-plus-two>
+python scripts/research.py deliver --issue-id <issue-uuid> --context-ref <context-receipt> --run-id <run-id> --artifact <artifact-path> --check <completed-check> --research-impact <explanation> --scope-complete --issue-revision <R-plus-two>
 ```
 
 3. 通过当前任务执行身份发一条短交付评论，附生成的 `research-delivery-*.json`。不要同时在评论正文再复制一份相同记录。
-4. 核对创建评论响应的 issue 版本确为 `R + 2`；如有新评论、额外附件或其他竞争，读取新要求并重新交付，不能只改旧记录版本或放宽版本校验。随后结束来源执行，不再修改此 issue；来源执行完成本身不增加 issue 版本。创建评论接口没有版本条件参数，不能假设评论本身已锁住并发。
+4. 核对创建评论响应的 issue 版本确为 `R + 2`；如有新评论、额外附件或其他竞争，读取新要求并重新交付，不能只改旧记录版本或放宽版本校验。v4 使用下方 `--submit-comment-id` 登记已经发布的来源评论，再结束来源执行，不再修改此 issue；来源执行完成本身不增加 issue 版本。创建评论接口没有版本条件参数，不能假设评论本身已锁住并发。
 
 未给 `--issue-revision` 的记录只用于本地准备，不能自动关闭任务。交付文件采用 `research-delivery/v1`，不可变地保存在资产根 `deliveries/`；运行 `deliver` 本身不会发布评论或改变平台状态。
+
+v4 生成记录时还要求实际代码已保存，写入 `code_ref`，并用 `--context-ref` 引用本来源执行实际读取合同的回执。以下两个互斥动作只调用登记服务，不创建第二份交付，也不代写 Agent 来源评论：
+
+```text
+python scripts/research.py deliver --issue-id <issue-uuid> --submit-comment-id <already-posted-comment-uuid>
+python scripts/research.py deliver --issue-id <issue-uuid> --consume-event <event-id> --source-run-id <current-task-uuid> --evidence-path <stable-note> --judgment <research-judgment> --next-action <next-action>
+```
+
+登记返回候选不等于 `done`，服务等待来源执行结束再校验。结果消费在最终交付前单独登记；稳定说明须在本项目资产根内，包含真实 event ID、job ID、完整判断和下一动作。收到通知、消费结果、最终交付和科学验收是不同事实。`status` 始终保留只读语义。
 
 预先指定了独立复核时，使用两步流程固定同一交付与产物：
 
 ```text
-python scripts/research.py deliver --draft --review-required --issue-id <issue-uuid> --run-id <run-id> --artifact <artifact-path> --check <completed-check> --research-impact <explanation> --scope-complete
+python scripts/research.py deliver --draft --review-required --issue-id <issue-uuid> --context-ref <context-receipt> --run-id <run-id> --artifact <artifact-path> --check <completed-check> --research-impact <explanation> --scope-complete
 ```
 
 草稿 `*.draft.json` 的状态是 `awaiting_review`，不能用于关闭任务。独立复核者检查固定产物后，发布 `research-review/v1` 记录，保留草稿的同一 `delivery_id` 和完整 `artifacts` 数组，给出是否通过；等待该复核来源执行完成。复核未通过时先修正、建立并复核新草稿，不把旧复核套用到改变后的产物。
@@ -96,7 +107,7 @@ python scripts/research.py deliver --draft --review-required --issue-id <issue-u
 通过复核后，由实际交付者回到原 issue 的执行先处理完其他附件，按上述方式进入 `in_review` 并读取 `R`。之后只新增一份最终 JSON 附件及交付评论，以 `R + 2` 为版本锚，并将复核评论 UUID 用于最终记录：
 
 ```text
-python scripts/research.py deliver --finalize <draft-path> --issue-id <issue-uuid> --review-evidence <review-comment-uuid> --issue-revision <R-plus-two>
+python scripts/research.py deliver --finalize <draft-path> --issue-id <issue-uuid> --context-ref <current-source-context-receipt> --review-evidence <review-comment-uuid> --issue-revision <R-plus-two>
 ```
 
 `--finalize` 不重新传入产物、自检或范围参数；它核验产物哈希未变，保留同一交付编号和产物，生成一次最终文件，不覆盖草稿或已有最终记录。随后按普通交付步骤上传最终 JSON 附件并核对版本。桥接独立核验复核者身份、复核来源执行和证据，命令成功不代替平台复核验证。
