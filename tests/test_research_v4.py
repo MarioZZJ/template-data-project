@@ -1,9 +1,12 @@
 """Client boundary checks; no platform writes, commits or paid jobs are performed."""
+import contextlib
 import json
+import locale
 import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -208,6 +211,19 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(Path(result["files"][0]["content_path"]).read_text(), "selected change\n")
         self.assertEqual(r.git(self.repo, "diff", "--cached", "--binary"), index_before)
         self.assertEqual(r.git(self.repo, "rev-parse", "HEAD"), head_before)
+
+    def test_command_output_preserves_utf8_under_a_legacy_console_locale(self):
+        message = "研究执行入口：保留中文差异"
+        command = [sys.executable, "-c", "import sys; sys.stdout.buffer.write(" + repr(message.encode("utf-8")) +
+                   "); sys.stderr.buffer.write(b'\\x81')"]
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(locale, "getpreferredencoding", return_value="cp1252"))
+            if hasattr(locale, "getencoding"):
+                stack.enter_context(patch.object(locale, "getencoding", return_value="cp1252"))
+            self.assertEqual(r.call(command), message)
+            raw = b"non-utf8-path-\xff"
+            output = r.call([sys.executable, "-c", "import sys; sys.stdout.buffer.write(" + repr(raw) + ")"])
+            self.assertEqual(output.encode("utf-8", errors="surrogateescape"), raw)
 
     def test_checkpoint_rejects_broad_and_credential_paths(self):
         r.setup(self.args("setup", "--stdlib"))

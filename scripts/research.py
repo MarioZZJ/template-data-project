@@ -95,11 +95,14 @@ def locked(path, timeout=60):
 
 
 def call(argv, cwd=None, env=None):
-    result = subprocess.run(argv, cwd=cwd, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Git emits UTF-8 repository text even when the Windows console uses cp1252.
+    # Capture bytes so decoding cannot fail inside a subprocess reader thread;
+    # keep private stderr undecoded and preserve non-UTF-8 path bytes losslessly.
+    result = subprocess.run(argv, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode:
         # Commands can contain private configuration: do not echo argv or stderr.
         raise RuntimeError(f"{Path(str(argv[0])).name} failed (exit {result.returncode}); inspect the local environment")
-    return result.stdout.strip()
+    return result.stdout.decode("utf-8", errors="surrogateescape").strip()
 
 
 def git(repo, *args):
