@@ -4,9 +4,9 @@
 
 ## 研究运行入口
 
-`research.py` 提供 `setup / run / status / deliver / export`，由 Python 3.10 及以上执行；完整命令和边界见 [研究执行](../docs/workflows/research-execution.md)。Makefile 是便捷别名，研究入口在 Windows 不要求 Make。
+`research.py` 提供 `setup / context / checkpoint / run / status / deliver / export`，由 Python 3.10 及以上执行；完整命令和边界见 [研究执行](../docs/workflows/research-execution.md)。Makefile 是便捷别名，研究入口在 Windows 不要求 Make。
 
-入口管理本机映射、固定代码与环境、一次持久作业、交付记录和正式产物导出。阶段授权与任务依赖保留在 Multica，完成事件和已授权收尾由配套桥接程序处理，不在仓库另建任务调度服务或一键执行全部研究的隐式授权入口。
+入口管理本机映射、只读上下文、明确范围的代码保存、固定代码与环境、服务提交、交付记录和正式产物导出。v4 正式作业只经登记服务；原生兼容适配不会在服务失效时自动接管。阶段授权与任务依赖保留在 Multica，完成事件和已授权收尾由配套桥接程序处理，不在仓库另建任务调度服务或一键执行全部研究的隐式授权入口。
 
 ## 论文工具
 

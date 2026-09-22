@@ -6,35 +6,55 @@
 
 一个任务包含完整范围的实施、自检、结果解释和交付。长计算不拆成需要人手接力的“提交”和“等待”任务。普通任务自检，阶段预先指定的关键成果才需要独立复核。
 
-## 五个入口
+## 七个入口
 
 在仓库根运行 `python scripts/research.py --help`，各子命令也支持 `--help`。全局 `--repo PATH` 可显式指定仓库，`--assets-home PATH` 用于已决定的本机资产根布局；通常使用默认的 `~/ResearchAssets`。
 
 ### `setup`：本机映射与环境
 
 ```text
-python scripts/research.py setup
+python scripts/research.py setup --harness v4 --service-socket <absolute-socket-path> --project-id <project-uuid>
 python scripts/research.py setup --project-name <readable-alias>
 python scripts/research.py setup --extra mssql
 ```
 
-默认使用 `uv.lock` 准备外部稳定环境；MSSQL 为可选依赖。`setup` 检查平台执行能力，不开展研究计算，也不自行创建 Multica 任务。无第三方依赖的流程演示可显式用 `--stdlib`，不能用它绕过真实研究依赖。
+默认使用 `uv.lock` 准备外部稳定环境；MSSQL 为可选依赖。v4 的本机映射登记服务 socket、项目身份和执行成员白名单；`RESEARCHD_SOCKET` 可覆盖已登记 socket。服务能力探测失败会明确列出未就绪项，不能据此启动正式长作业。`setup` 检查平台执行能力，不开展研究计算，也不自行创建 Multica 任务。无第三方依赖的流程演示可显式用 `--stdlib`，不能用它绕过真实研究依赖。
+
+### `context`：读取当前事实
+
+```text
+python scripts/research.py context --issue-id <issue-uuid>
+```
+
+优先使用登记服务；服务不可用或未返回平台合同原文时，回退原生 Multica CLI 的只读查询，读取当前 issue、父级合同、全部线程及编辑后的意见、活跃执行和研究计划入口。使用 `--multica-cwd` 或 `MULTICA_CLI_CWD` 指定本机允许的 CLI 目录。执行者列表只取登记的研究成员白名单，不返回运维成员或运行时凭据。
+
+输出来源和未取得项，不把不完整上下文称为有效授权。派生快照不能代替必要原文；新意见与编辑内容均按当前数据读取，不仅依据 created_at 增量。
+
+### `checkpoint`：保存明确范围
+
+```text
+python scripts/research.py checkpoint --file src/030-main_analysis.py --file experiments/main/README.md
+python scripts/research.py checkpoint --file src/030-main_analysis.py --commit --message-file <reviewed-message-file>
+```
+
+默认只保存具备路径、哈希和基线的不可变 patch 记录，并明确 `committed=false`；它不是已批准代码快照，不能用来绕过 run 的固定代码要求。`--commit` 是显式本地提交动作：先读取本机唯一署名规则，核对用户身份与消息中的实际模型和 Agent 署名，仅提交指定已被 Git 跟踪的文件，保留其他暂存及未暂存内容。新文件先由执行者显式 `git add -- <exact-path>`，不使用 `git add -A`。消息不得猜测实际模型标识；权限或签名失败不能绕过，也不把 patch 称为 commit。此命令从不 push。
 
 ### `run`：固定代码并持久执行
 
 ```text
-python scripts/research.py run --issue-id <issue-uuid> --input sample=<fixed-input-path> -- python src/030-main_analysis.py
+python scripts/research.py run --issue-id <issue-uuid> --entry <registered-entry> --request-key <stable-intent-key> --parameters-json <parameters-json> -- python src/030-main_analysis.py
 ```
 
-这是命令结构示例，路径、issue UUID 和脚本都需替换成真实任务内容。`--input` 登记固定文件；数据集使用带版本及校验信息的清单，不把目录当作已核验输入。默认要求本次实际改动已提交且工作树干净，再复制固定代码并调用系统托管；运行入口不会替执行者提交代码。唯一例外是根 `AGENTS.md` 中由 Multica 写入、具有精确边界标记的未暂存运行上下文：剥离该块后正文必须与已提交版本一致，其他文件、暂存区、权限或链接类型有改动仍会拒绝启动。该自动块无需提交，运行记录保留排除证据，代码快照仍取已提交版本。提交边界不清楚时先整理本任务版本，不丢弃已有修改，也不导出遗漏本次改动的旧 `HEAD`。
+这是命令结构示例，路径、issue UUID 和脚本都需替换成真实任务内容。`--input` 登记固定文件；数据集使用带版本及校验信息的清单，不把目录当作已核验输入。要求本次实际改动已提交且工作树干净。v4 把提交意图交给已登记外置服务，由服务固定代码并调用系统托管；服务不可用就拒绝正式运行。运行入口不会替执行者提交代码。唯一例外是根 `AGENTS.md` 中由 Multica 写入、具有精确边界标记的未暂存运行上下文：剥离该块后正文必须与已提交版本一致，其他文件、暂存区、权限或链接类型有改动仍会拒绝启动。该自动块无需提交，运行记录保留排除证据，代码快照仍取已提交版本。提交边界不清楚时先整理本任务版本，不丢弃已有修改，也不导出遗漏本次改动的旧 `HEAD`。
 
 - 输入映射、完整命令、代码版本、环境和运行编号写入 `run.json`；`DATA_ROOT`、`RUN_DIR`、`OUTPUT_ROOT` 每次独立注入。
 - 脚本从固定输入读取，中间数据写 `RUN_DIR/data`，候选图表写 `OUTPUT_ROOT`；不写主检出的共享输出位置。
 - 环境不能指向临时工作树中的 editable 安装。Multica 清理工作树后，代码导入、子进程和日志仍须正常。
 - 用 `--deadline`、`--attempt-limit` 记录相应限制；`--budget-json` 保存资源预算元数据，实际费用上限需由研究命令或服务端限制落实。所有额度来自阶段授权，不能因重启重置。
-- 默认通过 Linux systemd、macOS launchd、Windows 任务计划程序托管。`--foreground` 仅作同步诊断，不提供会话退出后的存活保证。
+- v4 首版由已验证的 Linux 外置服务托管，受理回执明确 `accepted`、`job_id`、代码位置、输出根和绝对截止。同一 `request_key` 返回原作业，内容冲突拒绝；通知失败不能改 key 重提。服务白名单入口与参数必须一致，不能提交任意宿主命令。
+- 原生运行器保留 Linux systemd、macOS launchd、Windows 任务计划程序适配，供明确选择 legacy 的兼容项目及基础设施验收；v4 项目禁止 `--foreground` 绕过登记服务。平台支持以对应机器的实际验收为准。
 
-退出模型会话后由系统继续计算，桥接程序处理完成事件。程序返回成功只表明运行完成，不能直接关闭研究任务。
+退出模型会话后由系统继续计算，外置服务处理完成事件。程序返回成功只表明运行完成，不能直接关闭研究任务。
 
 ### `status`：检查运行与生成平台快照
 
@@ -51,7 +71,7 @@ python scripts/research.py status --dashboard-from <multica-snapshot.json> --das
 
 无计算任务可以省略 `--run-id`，仍需产物、实际检查和研究影响。只有确实完成全量范围才能写 `--scope-complete`；命令记录声明，不替执行者作科学判断。临时工作树内的产物会复制到资产根的稳定交付目录，已有稳定运行产物保留原位置，避免会话结束后文件失效。
 
-成员先完成自检，并在同一 issue 评论提及固定负责人 Butler，交回完成、失败或剩余差距；分工报告不等于全任务正式交付。Butler 无需用户决定时继续评论派工，需要实质决定时提及用户。全任务具备交付条件后，由 Butler 在属于原 issue 的执行中按以下顺序发布：
+实际完整交付者完成自检并解释研究影响；局部准备、试跑和分工报告不等于全任务完成。全任务具备交付条件后，由它在属于原 issue 的执行中按以下顺序发布：
 
 1. 当前 issue 内执行先处理完其他需要上传的附件，将任务置为 `in_review` 且不启动新运行，再读取当前 issue 版本 `R`。读取后只新增一份最终交付 JSON 附件和一条交付评论。
 2. 准备交付，`--issue-revision` 填写 `R + 2`：上传这一份新 JSON 附件增加一次版本，创建评论再增加一次版本。此计算只适用于读取 `R` 后恰好新增一份附件的默认流程。
@@ -73,7 +93,7 @@ python scripts/research.py deliver --draft --review-required --issue-id <issue-u
 
 草稿 `*.draft.json` 的状态是 `awaiting_review`，不能用于关闭任务。独立复核者检查固定产物后，发布 `research-review/v1` 记录，保留草稿的同一 `delivery_id` 和完整 `artifacts` 数组，给出是否通过；等待该复核来源执行完成。复核未通过时先修正、建立并复核新草稿，不把旧复核套用到改变后的产物。
 
-通过复核后，由 Butler 回到原 issue 的执行先处理完其他附件，按上述方式进入 `in_review` 并读取 `R`。之后只新增一份最终 JSON 附件及交付评论，以 `R + 2` 为版本锚，并将复核评论 UUID 用于最终记录：
+通过复核后，由实际交付者回到原 issue 的执行先处理完其他附件，按上述方式进入 `in_review` 并读取 `R`。之后只新增一份最终 JSON 附件及交付评论，以 `R + 2` 为版本锚，并将复核评论 UUID 用于最终记录：
 
 ```text
 python scripts/research.py deliver --finalize <draft-path> --issue-id <issue-uuid> --review-evidence <review-comment-uuid> --issue-revision <R-plus-two>
@@ -81,7 +101,7 @@ python scripts/research.py deliver --finalize <draft-path> --issue-id <issue-uui
 
 `--finalize` 不重新传入产物、自检或范围参数；它核验产物哈希未变，保留同一交付编号和产物，生成一次最终文件，不覆盖草稿或已有最终记录。随后按普通交付步骤上传最终 JSON 附件并核对版本。桥接独立核验复核者身份、复核来源执行和证据，命令成功不代替平台复核验证。
 
-桥接只处理已登记可自动完成的子任务，核验完整范围、实际产物、自检、必要复核、已完成且属于该 issue 的来源执行和最新交付，再按版本条件更新 `done`。原生 `run_only` 回调的独立会话不能冒充该 issue 的来源执行。父任务保持人工验收。
+服务只处理已登记可自动完成的范围，核验完整范围、实际产物、自检、必要复核、已完成且属于该 issue 的来源执行和最新交付，再按版本条件更新 `done`。`human` 不自动收尾；阶段是否自动完成由登记政策和下一阶段授权决定。原生 `run_only` 回调的独立会话不能冒充该 issue 的来源执行。
 
 ### `export`：选择正式图表
 
@@ -99,10 +119,10 @@ python scripts/research.py export --run-id <run-id> --file <relative-output> --k
 
 ## 完成事件、暂停与恢复
 
-桥接程序须先由工作区管理员部署为持续运行的系统服务，并按受保护策略登记本项目、阶段、子任务、资产根及原生 `run_only` webhook。模板 `setup` 不替代服务部署；未登记任务默认手动、未授权。接入步骤见初始化清单，实际配置与密钥保留在本机受保护位置。
+外置服务由工作区管理员固定版本并交给系统托管，逐项目登记入口、阶段、资产根、资源范围、执行者及政策。`setup` 不替代服务部署，不能自行扩大白名单。既有项目仍使用原生执行器与旧桥接时，继续按其登记政策处理，不因模板更新自动迁移。
 
-桥接与模板共用运行记录，负责完成通知、交付检查和父任务接续，不另建研究任务调度平台。状态不变时不唤醒模型。结果先到 `run_only` 接收者，再由它核验原 issue 并发一次带事件标记的 Butler 唤醒评论；Butler 在随后属于原 issue 的执行中检查、继续评论派工或完成正式交付。通知受理、独立接收会话完成、原 issue 真正接续是三个不同证据，必须核对最后一步。未交接事件保留并去重恢复。
+v4 完成或异常事件直接评论回原 issue 的实际执行者。事件台账分别核对投递、关联运行和本作业被消费的证据；排队、HTTP 200 或一句“收到”不代表研究接续完成。同轮合并多个事件时逐项核对；会话无法恢复时按当前合同及持久记录重建，不重算。
 
-通知重试与重新计算分开。运行时离线后恢复通知，不重复提交付费计算；用户暂停继续保持，预算、次数和截止时间跨重启保留。桥接凭据独立保管，不使用会话结束即失效的任务令牌。
+通知重试与重新计算分开。用户暂停、human 等待和终止任务收到迟到结果时保留证据，不自动重开；预算、次数和截止跨重启保留。服务凭据独立保管，不使用会话结束即失效的任务令牌。一个登记范围只允许一个通知及收尾写入者。
 
-在实际平台分别验证持久执行、工作树删除、重复事件和暂停恢复。没有对应系统实测的适配只能标为未验收。
+只在隔离项目验收持久执行、工作树删除、重复请求、通知不明、暂停和恢复；两现有研究项目的治理指令单独交付，不在本模板初始化时执行迁移。未实测平台及能力明确标注。
