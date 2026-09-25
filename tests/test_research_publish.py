@@ -68,7 +68,7 @@ print(json.dumps({'state': 'registered', 'record_sha256': hashlib.sha256(raw).he
         self.prepare_publisher()
         _, entry = r.project_config(self.args('context'))
         self.assertEqual(entry['delivery_publisher'], {'protocol': 'research-delivery-publication/v1',
-                                                      'path': str(self.helper), 'sha256': self.checksum})
+                                                      'path': str(self.helper.resolve()), 'sha256': self.checksum})
         with self.assertRaisesRegex(ValueError, 'does not match'):
             r.publisher_registration(str(self.helper), '0' * 64, self.repo)
         checkout_file = self.repo / 'README.md'
@@ -83,8 +83,8 @@ print(json.dumps({'state': 'registered', 'record_sha256': hashlib.sha256(raw).he
                            PYTHONPATH='/untrusted-python-module'):
             result = r.publish(args)['result']
         self.assertEqual(bytes.fromhex(result['observed_record_hex']), self.raw)
-        self.assertEqual(result['observed_socket'], str(self.base / 'service.sock'))
-        self.assertEqual(result['observed_cwd'], str(self.base))
+        self.assertEqual(result['observed_socket'], str((self.base / 'service.sock').resolve()))
+        self.assertEqual(result['observed_cwd'], str(self.base.resolve()))
         self.assertEqual(result['observed_parent'], SOURCE)
         self.assertEqual(result['observed_summary'], '实际发现及下一动作')
         self.assertEqual(self.record_path.read_bytes(), self.raw)
@@ -134,7 +134,7 @@ print(json.dumps({'state': 'registered', 'record_sha256': hashlib.sha256(raw).he
                 r.publish(args)
         self.assertEqual(invoke.call_count, 1)
         argv = invoke.call_args.args[0]
-        self.assertEqual(argv[1:3], ['-I', str(self.helper)])
+        self.assertEqual(argv[1:3], ['-I', str(self.helper.resolve())])
         self.assertNotIn('mat_fixture_not_real', repr(argv))
         self.assertEqual(self.record_path.read_bytes(), self.raw)
 
