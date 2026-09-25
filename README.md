@@ -29,6 +29,8 @@ python scripts/research.py deliver --issue-id <issue-uuid> --context-ref <contex
 python scripts/research.py export --run-id <run-id> --file <relative-output> --kind figures --accepted-by <acceptance-reference>
 ```
 
+已登记 v4 发布器的项目在完整记录准备好后，显式使用 `publish --record <delivery_path> --issue-id <current-issue-uuid> --summary <finding-and-next-action>` 原样发布并登记；先按执行文档取得实际版本锚与上下文回执。部署者单独登记发布器路径和哈希，模板不会自动部署或启用发布。
+
 尖括号内容须替换为本任务的真实值。参数、环境和无计算交付的示例见 [研究执行](docs/workflows/research-execution.md)；`--help` 提供当前命令语法。源码编号便于阅读，实际执行依赖以 Multica 任务为准，不维护根 README 命令总表。
 
 ## 目录与信息归属

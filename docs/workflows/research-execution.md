@@ -6,7 +6,7 @@
 
 一个任务包含完整范围的实施、自检、结果解释和交付。长计算不拆成需要人手接力的“提交”和“等待”任务。普通任务自检，阶段预先指定的关键成果才需要独立复核。
 
-## 七个入口
+## 八个入口
 
 在仓库根运行 `python scripts/research.py --help`，各子命令也支持 `--help`。全局 `--repo PATH` 可显式指定仓库，`--assets-home PATH` 用于已决定的本机资产根布局；通常使用默认的 `~/ResearchAssets`。
 
@@ -19,6 +19,14 @@ python scripts/research.py setup --extra mssql
 ```
 
 默认使用 `uv.lock` 准备外部稳定环境；MSSQL 为可选依赖。v4 的本机映射登记服务 socket、项目身份和执行成员白名单；`RESEARCHD_SOCKET` 可覆盖已登记 socket。服务能力探测失败会明确列出未就绪项，不能据此启动正式长作业。`setup` 检查平台执行能力，不开展研究计算，也不自行创建 Multica 任务。无第三方依赖的流程演示可显式用 `--stdlib`，不能用它绕过真实研究依赖。
+
+交付发布器也由部署者在 Agent 任务外单独登记，不能从任务正文、评论或环境变量挑选程序。部署者核验已验证服务 release 中的独立 `publish_delivery.py`，再提供实际绝对路径及 SHA256；本模板不包含第二份发布实现，也不预填任何机器路径或哈希：
+
+```text
+python scripts/research.py setup --harness v4 --service-socket <registered-absolute-socket> --project-id <project-uuid> --multica-cwd <authorized-cli-directory> --publisher-helper <verified-release-helper-absolute-path> --publisher-sha256 <verified-helper-sha256>
+```
+
+这会将 `delivery_publisher` 的协议、路径及哈希存入本机 `projects.json` 项目映射。helper 必须位于临时研究检出之外；修改 release 后必须重新核验并登记新哈希。当前任务令牌环境不能登记发布器。映射是部署配置，Agent 不自行改写；这不是同一操作系统用户之间的安全隔离。登记成功也不代表真实发布验收，尚未登记的项目不能使用 `publish`。
 
 ### `context`：读取当前事实
 
@@ -69,7 +77,7 @@ python scripts/research.py status --dashboard-from <multica-snapshot.json> --das
 
 看板输入由配套桥接的 `snapshot` 从 Multica 导出，包含 `source`（也接受 `source_url`）、`generated_at` 和 `issues`；每个任务含 `identifier`、`title`、`status`、`url`。可选 `phases`、`decisions`、`artifacts` 提供阶段、待决事项和成果，缺少时显示未提供。仅替换 `BEGIN/END MULTICA STATUS` 标记区域，保留区域外文字和原始采集时间；不从本地运行成功推断任务完成。看板在阶段交付或需要查看时生成，不要求每次运行提交一次快照。
 
-### `deliver`：准备与发布交付
+### `deliver`：准备与登记交付
 
 无计算任务可以省略 `--run-id`，仍需产物、实际检查和研究影响。只有确实完成全量范围才能写 `--scope-complete`；命令记录声明，不替执行者作科学判断。临时工作树内的产物会复制到资产根的稳定交付目录，已有稳定运行产物保留原位置，避免会话结束后文件失效。
 
@@ -82,8 +90,8 @@ python scripts/research.py status --dashboard-from <multica-snapshot.json> --das
 python scripts/research.py deliver --issue-id <issue-uuid> --context-ref <context-receipt> --run-id <run-id> --artifact <artifact-path> --check <completed-check> --research-impact <explanation> --scope-complete --issue-revision <R-plus-two>
 ```
 
-3. 通过当前任务执行身份发一条短交付评论，附生成的 `research-delivery-*.json`。不要同时在评论正文再复制一份相同记录。
-4. 核对创建评论响应的 issue 版本确为 `R + 2`；如有新评论、额外附件或其他竞争，读取新要求并重新交付，不能只改旧记录版本或放宽版本校验。v4 使用下方 `--submit-comment-id` 登记已经发布的来源评论，再结束来源执行，不再修改此 issue；来源执行完成本身不增加 issue 版本。创建评论接口没有版本条件参数，不能假设评论本身已锁住并发。
+3. 已登记发布器的 v4 项目使用下节 `publish`，由当前任务执行身份附加生成的完整 `research-delivery-*.json` 并登记。其他项目继续按已有人工发布与登记流程；均不缩写、重建或在正文再复制一份记录。
+4. 核对创建评论后的实际 issue 版本确为 `R + 2`（`publish` 的登记 helper 会回读校验）；如有新评论、额外附件或其他竞争，读取新要求并重新交付，不能只改旧记录版本或放宽版本校验。未使用 `publish` 的 v4 流程使用下方 `--submit-comment-id` 登记已经发布的来源评论，再结束来源执行，不再修改此 issue；来源执行完成本身不增加 issue 版本。创建评论接口没有版本条件参数，不能假设评论本身已锁住并发。
 
 未给 `--issue-revision` 的记录只用于本地准备，不能自动关闭任务。交付文件采用 `research-delivery/v1`，不可变地保存在资产根 `deliveries/`；运行 `deliver` 本身不会发布评论或改变平台状态。
 
@@ -113,6 +121,22 @@ python scripts/research.py deliver --finalize <draft-path> --issue-id <issue-uui
 `--finalize` 不重新传入产物、自检或范围参数；它核验产物哈希未变，保留同一交付编号和产物，生成一次最终文件，不覆盖草稿或已有最终记录。随后按普通交付步骤上传最终 JSON 附件并核对版本。桥接独立核验复核者身份、复核来源执行和证据，命令成功不代替平台复核验证。
 
 服务只处理已登记可自动完成的范围，核验完整范围、实际产物、自检、必要复核、已完成且属于该 issue 的来源执行和最新交付，再按版本条件更新 `done`。`human` 不自动收尾；阶段是否自动完成由登记政策和下一阶段授权决定。原生 `run_only` 回调的独立会话不能冒充该 issue 的来源执行。
+
+### `publish`：原样发布完整交付并登记
+
+```text
+python scripts/research.py publish --record <delivery_path-from-deliver> --issue-id <current-issue-uuid> --summary <finding-and-next-action>
+```
+
+这是显式平台写操作；`deliver` 默认仍只准备不可变本地文件。先完成上节的 `in_review`、真实版本锚及 `context_ref` 步骤，再将 `deliver` 返回的原始文件路径交给 `publish`，包括独立复核后生成的最终文件。不要手工重建 JSON，也不单独重传其中部分字段。评论触发的执行按平台要求添加 `--parent <actual-trigger-comment-uuid>`。摘要限 300 字符，不含 mention 或代码围栏；研究发现、依据及限制留在完整成果附件中。
+
+入口仅使用本机登记的 helper、socket 和 CLI 目录，不接受任务提供的 helper 或解释器，也不使用 `RESEARCHD_SOCKET`、`MULTICA_CLI_CWD` 覆盖发布目的地。它核验 helper 哈希，用当前 Python 隔离模式调用同一已验证发布器，并要求当前 `MULTICA_TASK_ID`、`MULTICA_AGENT_ID` 和任务范围令牌；令牌只通过现有进程环境继承，不写入命令或交付。原始记录必须位于本项目 `deliveries/`，始终作为完整附件发送。
+
+来源是否属于该 issue 且仍在执行、当前归属与 `in_review`、附件和评论后的真实 revision、原始记录完整性及服务登记回读，由同一个 helper 校验；合同 `context_ref`、必要复核及自动收尾仍由登记服务独立检查。入口不更改旧记录的版本、不补造上下文、不自行把任务置为 `done`。`human` 登记回执仍是待人审，不代表通过完整交付或科学验收。
+
+发布结果不明时保留原记录和同名 `*.publication.json` 意图日志，先核对原评论及服务记录；入口不会自动重发，不换文件、摘要或来源身份绕过原意图。发布器找不到确认过的原评论时会停止，而不是再发一条。只有服务回读确认同一完整记录后才返回已登记，来源结束后的自动收尾另行核验。
+
+此连接使用 POSIX 文件锁与 Unix socket，当前真实验收以 Linux 部署为准；Windows 不支持 `publish`，macOS 的真实服务链路尚需当地验证。其余本地入口继续兼容 Python 3.10–3.13 和原有平台；安装模板不会部署发布器或迁移已有项目。
 
 ### `export`：选择正式图表
 

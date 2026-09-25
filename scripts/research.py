@@ -267,6 +267,13 @@ def supervisor_available(kind):
 
 
 def setup(args):
+    publisher = None
+    if args.publisher_helper or args.publisher_sha256:
+        if os.environ.get("MULTICA_TOKEN", "").startswith("mat_"):
+            raise ValueError("Publisher registration belongs to the deployer, outside an Agent task")
+        if not args.publisher_helper or not args.publisher_sha256:
+            raise ValueError("Publisher registration requires both --publisher-helper and --publisher-sha256")
+        publisher = publisher_registration(args.publisher_helper, args.publisher_sha256, repository(args.repo))
     repo, root, entry = locate(args, create=True)
     env = prepare_env(repo, root, args.stdlib, args.extra)
     atomic_json(root / "environment.json", {"stdlib": args.stdlib, "extras": args.extra, "environment_dir": str(env)})
@@ -289,6 +296,11 @@ def setup(args):
         for agent in args.executor_agent_id:
             uuid.UUID(agent)
         updates["executor_agent_ids"] = sorted(set(args.executor_agent_id))
+    if publisher is not None:
+        effective = dict(entry, **updates)
+        if effective.get("harness_version") != 4 or not effective.get("project_id") or not effective.get("service_socket") or not effective.get("multica_cwd"):
+            raise ValueError("Publisher registration requires a v4 project, socket and native CLI directory")
+        updates["delivery_publisher"] = publisher
     if updates:
         home = Path(args.assets_home).expanduser().resolve()
         with locked(home / ".projects.lock"):
@@ -366,6 +378,80 @@ def service_request(args, entry, operation, payload):
         suffix = ": " + code if isinstance(code, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", code) else ""
         raise ServiceRejected("Research service rejected the request" + suffix + "; inspect its local evidence")
     return value.get("result")
+
+
+def publisher_registration(helper, checksum, repo):
+    """Validate an operator-pinned release; never discover executable code in tasks."""
+    if not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+        raise ValueError("Publisher SHA256 must be the deployer's 64-character lowercase digest")
+    path = Path(helper).expanduser()
+    if not path.is_absolute() or path.is_symlink() or not path.is_file():
+        raise ValueError("Publisher must be an absolute regular release file, not a symlink")
+    path = path.resolve()
+    if path.is_relative_to(repo.resolve()):
+        raise ValueError("Publisher release must be outside the disposable research checkout")
+    if digest(path) != checksum:
+        raise ValueError("Registered publisher release hash does not match; do not execute it")
+    return {"protocol": "research-delivery-publication/v1", "path": str(path), "sha256": checksum}
+
+
+def publish(args):
+    """Explicit platform write through the pinned helper; deliver stays unchanged."""
+    if os.name != "posix" or not hasattr(socket, "AF_UNIX"):
+        raise ServiceUnavailable("The registered delivery publisher requires POSIX and Unix sockets; ordinary local commands remain available")
+    repo, entry = project_config(args)
+    registration = entry.get("delivery_publisher")
+    if entry.get("harness_version") != 4 or not entry.get("project_id") or not isinstance(registration, dict):
+        raise ValueError("Publish requires a deployer-registered v4 delivery publisher")
+    if registration.get("protocol") != "research-delivery-publication/v1":
+        raise ValueError("Unsupported registered publisher protocol")
+    checked = publisher_registration(registration.get("path", ""), registration.get("sha256"), repo)
+    # Publishing uses registered destinations only; context/run environment overrides
+    # must not redirect a platform write or executable selection.
+    service_path, cli_cwd = entry.get("service_socket"), entry.get("multica_cwd")
+    if not service_path or not Path(service_path).is_absolute() or not cli_cwd or not Path(cli_cwd).is_absolute() or not Path(cli_cwd).is_dir():
+        raise ValueError("Publish requires registered absolute socket and native CLI directory")
+    task_id, agent_id = os.environ.get("MULTICA_TASK_ID"), os.environ.get("MULTICA_AGENT_ID")
+    if not task_id or not agent_id or not os.environ.get("MULTICA_TOKEN", "").startswith("mat_"):
+        raise ValueError("Publish requires the current task-scoped Agent identity")
+    for value in (task_id, agent_id, args.issue_id, entry["project_id"]):
+        uuid.UUID(value)
+    if os.environ.get("MULTICA_ISSUE_ID") not in (None, "", args.issue_id):
+        raise ValueError("Publish issue differs from the current task")
+    root = Path(entry["asset_root"]).resolve()
+    original = Path(args.record).expanduser()
+    record_path = original.resolve()
+    if original.is_symlink() or record_path.parent != root / "deliveries" or not record_path.is_file():
+        raise ValueError("Publish requires this project's original delivery file under deliveries/")
+    record = read_json(record_path)
+    if not isinstance(record, dict) or record.get("issue_id") != args.issue_id or record_path.name != str(record.get("delivery_id", "")) + ".json":
+        raise ValueError("Publish requires the unchanged canonical delivery record for this issue")
+    checksum = digest(record_path)
+    argv = [sys.executable, "-I", checked["path"], "--record", str(record_path),
+            "--issue-id", args.issue_id, "--project-id", entry["project_id"],
+            "--socket", service_path, "--multica-cwd", cli_cwd, "--summary", args.summary]
+    if args.parent:
+        uuid.UUID(args.parent)
+        argv.extend(["--parent", args.parent])
+    try:
+        result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=360, check=False)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ServiceUnavailable("Publication outcome is unknown; inspect the original .publication.json journal; do not repost") from error
+    if result.returncode:
+        # Do not expose arbitrary subprocess diagnostics, credentials or retry a write.
+        raise ServiceUnavailable("Publisher did not confirm registration; inspect its .publication.json journal and original intent; do not repost")
+    try:
+        receipt = json.loads(result.stdout)
+    except (ValueError, UnicodeError) as error:
+        raise ServiceUnavailable("Publication reply is unknown; inspect the original journal; do not repost") from error
+    if (not isinstance(receipt, dict) or receipt.get("state") != "registered"
+            or receipt.get("record_sha256") != checksum or receipt.get("source_run_id") != task_id
+            or receipt.get("agent_id") != agent_id or receipt.get("issue_id") != args.issue_id
+            or receipt.get("project_id") != entry["project_id"] or receipt.get("record_fields_preserved") is not True
+            or digest(record_path) != checksum):
+        raise ServiceUnavailable("Publisher receipt does not confirm this unchanged source delivery; reconcile the original journal; do not repost")
+    return {"operation": "publish_delivery", "result": receipt,
+            "note": "Full original record registered by the current task; registration is not task closure or scientific acceptance"}
 
 
 def cli_json(args, entry, *argv):
@@ -1128,7 +1214,10 @@ def deliver(args):
     if service_enabled(args, entry) and not args.context_ref:
         raise ValueError("A v4 delivery requires --context-ref from this source task's actual service context read")
     if args.finalize:
-        return finalize_delivery(args, root)
+        final = finalize_delivery(args, root)
+        if entry.get("delivery_publisher"):
+            final["next_action"] = "Use publish --record with this exact delivery_path in the current task; do not rebuild the attachment."
+        return final
     code_ref = None
     if service_enabled(args, entry):
         clean_code_context(repo)
@@ -1177,7 +1266,10 @@ def deliver(args):
         value["issue_revision"] = args.issue_revision
     path = root / "deliveries" / (identifier + (".draft.json" if args.draft else ".json"))
     write_delivery_once(path, value)
-    return {"delivery_path": str(path), "record": value, "next_action": "Request independent review of this exact draft; do not submit it as ready." if args.draft else "Post through the active agent execution. The bridge independently verifies source identity, latest comment and issue revision."}
+    next_action = "Request independent review of this exact draft; do not submit it as ready." if args.draft else "Post through the active agent execution. The bridge independently verifies source identity, latest comment and issue revision."
+    if not args.draft and entry.get("delivery_publisher"):
+        next_action = "Use publish --record with this exact delivery_path in the current task; do not rebuild the attachment."
+    return {"delivery_path": str(path), "record": value, "next_action": next_action}
 
 
 def export(args):
@@ -1287,6 +1379,8 @@ def parser():
     p.add_argument("--service-socket", help="Register an absolute Unix socket path; enables v4")
     p.add_argument("--project-id", help="Register this project's Multica UUID")
     p.add_argument("--multica-cwd", help="Directory authorized for native Multica CLI reads")
+    p.add_argument("--publisher-helper", help="Deployer-only absolute path to the verified standalone delivery publisher release")
+    p.add_argument("--publisher-sha256", help="Deployer-supplied SHA256 pin; required together with --publisher-helper")
     p.add_argument("--executor-agent-id", action="append", default=[], help="Allowed research executor UUID; repeatable, excludes unrelated workspace members")
     p = sub.add_parser("context", help="Read current contracts, edited comments and service evidence; never changes platform state")
     p.add_argument("--issue-id", help="Issue UUID or identifier; defaults to MULTICA_ISSUE_ID")
@@ -1337,6 +1431,11 @@ def parser():
     p.add_argument("--evidence-path", help="Stable result-consumption evidence file under the registered asset root")
     p.add_argument("--judgment", help="Research judgment made from the consumed result")
     p.add_argument("--next-action", help="Actual next action following result consumption")
+    p = sub.add_parser("publish", help="Explicitly post the full original delivery and register it via the deployer-pinned POSIX helper")
+    p.add_argument("--record", required=True, help="Original immutable JSON returned by deliver; never reconstruct its contents")
+    p.add_argument("--issue-id", required=True, help="Current Multica issue UUID")
+    p.add_argument("--summary", required=True, help="Short research finding and next action, at most 300 characters; no mentions")
+    p.add_argument("--parent", help="Actual trigger comment UUID for the current comment-triggered execution")
     p = sub.add_parser("export", help="Select an accepted run artifact for Git-tracked paper output")
     p.add_argument("--run-id", required=True)
     p.add_argument("--file", required=True, help="Artifact path relative to run outputs/")
