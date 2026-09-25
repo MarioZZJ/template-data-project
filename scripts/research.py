@@ -506,6 +506,12 @@ def context(args):
         allowed = set(entry.get("executor_agent_ids", [])) or {agent.get("id") for agent in agents}
         platform["eligible_executors"] = [selected_fields(agent, ("id", "name", "role", "runtime_id", "model", "reasoning_effort", "status", "updated_at"))
                                          for agent in agents if agent.get("id") in allowed]
+        client_entrypoint = remote.get("client_entrypoint")
+        entrypoint_fields = ("path", "sha256", "usage")
+        if isinstance(client_entrypoint, dict) and all(isinstance(client_entrypoint.get(key), str) for key in entrypoint_fields):
+            # Service-validated discovery metadata only; never execute or expose
+            # arbitrary additional release/configuration fields through context.
+            platform["client_entrypoint"] = selected_fields(client_entrypoint, entrypoint_fields)
         source = "researchd"
     else:
         issue_fields = ("id", "identifier", "title", "description", "status", "status_name", "revision", "updated_at",

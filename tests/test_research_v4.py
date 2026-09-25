@@ -197,6 +197,37 @@ class ClientTests(unittest.TestCase):
         self.assertNotIn("PRIVATE", json.dumps(result))
         cli.assert_not_called()
 
+    def test_context_exposes_only_service_client_entrypoint_fields_without_execution(self):
+        self.setup_v4()
+        entrypoint = {"path": str(self.base / "release" / "research.py"), "sha256": "a" * 64,
+                      "usage": "Use this registered client for the current C trial"}
+        remote = {"issue": {"id": ISSUE, "project_id": PROJECT}, "comments": [],
+                  "context_ref": "actual-service-context", "client_entrypoint": dict(entrypoint, token="PRIVATE", extra={"secret": "PRIVATE"}),
+                  "unexpected_platform_field": "PRIVATE"}
+        with patch.object(r, "service_request", return_value=remote), patch.object(r, "cli_json") as cli, \
+                patch.object(r, "publish") as publish, patch.object(r, "run") as run:
+            result = r.context(self.args("context", "--issue-id", ISSUE, "--source-run-id", SOURCE))
+        self.assertEqual(result["source"], "researchd")
+        self.assertEqual(result["context_ref"], "actual-service-context")
+        self.assertEqual(result["client_entrypoint"], entrypoint)
+        self.assertIsNone(result["service_context"])
+        self.assertNotIn("PRIVATE", json.dumps(result))
+        cli.assert_not_called()
+        publish.assert_not_called()
+        run.assert_not_called()
+
+    def test_context_omits_malformed_client_entrypoint_without_changing_other_fields(self):
+        self.setup_v4()
+        for entrypoint in (None, "arbitrary program", {"path": {"secret": "PRIVATE"}, "sha256": "a" * 64, "usage": "info"},
+                           {"path": "/client.py", "sha256": "a" * 64}):
+            remote = {"issue": {"id": ISSUE, "project_id": PROJECT}, "comments": [],
+                      "context_ref": "actual-service-context", "client_entrypoint": entrypoint}
+            with self.subTest(entrypoint=entrypoint), patch.object(r, "service_request", return_value=remote):
+                result = r.context(self.args("context", "--issue-id", ISSUE))
+            self.assertNotIn("client_entrypoint", result)
+            self.assertEqual(result["context_ref"], "actual-service-context")
+            self.assertEqual(result["source"], "researchd")
+
     def test_checkpoint_preserves_unrelated_index_and_labels_patch(self):
         r.setup(self.args("setup", "--stdlib"))
         (self.repo / "README.md").write_text("selected change\n")
