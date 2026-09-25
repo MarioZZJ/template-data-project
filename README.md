@@ -15,17 +15,21 @@
 
 ## 开始使用
 
-从默认分支创建项目后，执行 `INITIALIZE_PROJECT.md`。先写清全部研究阶段的目标和依赖，再把当前获准阶段细化为可验收的任务，完成资产、环境、平台绑定及一次演示后删除该清单。初始化不要求逐个填写目录说明。
+从明确的模板发布或候选提交创建独立项目、核实独立 origin 后，执行 `INITIALIZE_PROJECT.md`。先写清全部研究阶段的目标和依赖，再把当前获准阶段细化为可验收的任务，完成资产、环境、平台绑定及一次演示后删除该清单。初始化不要求逐个填写目录说明。
 
-需要 Python 3.10 及以上、Git、`uv` 和本机持久执行能力。五个入口在 Linux、macOS、Windows 使用相同的 Python 命令；操作系统托管分别由 systemd、launchd、任务计划程序提供。
+需要 Python 3.10 及以上、Git、`uv` 和本机持久执行能力。v4 外置服务首版面向已验证的 Linux 主机；原生兼容运行器保留 systemd、launchd 和任务计划程序适配。命令已实现与真实平台验收分别记录，服务不可用时不能回退为正式后台运行。
 
 ```text
-python scripts/research.py setup
-python scripts/research.py run --issue-id <issue-uuid> -- <command> <arguments>
+python scripts/research.py setup --harness v4 --service-socket <absolute-socket-path> --project-id <project-uuid>
+python scripts/research.py context --issue-id <issue-uuid>
+python scripts/research.py checkpoint --file <explicit-project-file>
+python scripts/research.py run --issue-id <issue-uuid> --entry <registered-entry> --request-key <stable-intent-key> -- <command> <arguments>
 python scripts/research.py status <run-id>
-python scripts/research.py deliver --issue-id <issue-uuid> --artifact <path> --check <check-name> --research-impact <text> --scope-complete
+python scripts/research.py deliver --issue-id <issue-uuid> --context-ref <context-receipt> --artifact <path> --check <check-name> --research-impact <text> --scope-complete
 python scripts/research.py export --run-id <run-id> --file <relative-output> --kind figures --accepted-by <acceptance-reference>
 ```
+
+已登记 v4 发布器的项目在完整记录准备好后，显式使用 `publish --record <delivery_path> --issue-id <current-issue-uuid> --summary <finding-and-next-action>` 原样发布并登记；先按执行文档取得实际版本锚与上下文回执。部署者单独登记发布器路径和哈希，模板不会自动部署或启用发布。
 
 尖括号内容须替换为本任务的真实值。参数、环境和无计算交付的示例见 [研究执行](docs/workflows/research-execution.md)；`--help` 提供当前命令语法。源码编号便于阅读，实际执行依赖以 Multica 任务为准，不维护根 README 命令总表。
 
@@ -58,6 +62,7 @@ ResearchAssets/<仓库名>/
     logs/
     run.json
   deliveries/             不可变交付记录，支持无计算任务
+  checkpoints/            明确文件范围的不可变 patch 记录
 ```
 
 凭据不写入映射和运行记录。资产映射、数据边界及共享输入规则见 [数据生命周期](docs/workflows/data-lifecycle.md)。模板不提供跨机器资产同步。
