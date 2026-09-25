@@ -276,7 +276,10 @@ def setup(args):
         publisher = publisher_registration(args.publisher_helper, args.publisher_sha256, repository(args.repo))
     repo, root, entry = locate(args, create=True)
     env = prepare_env(repo, root, args.stdlib, args.extra)
-    atomic_json(root / "environment.json", {"stdlib": args.stdlib, "extras": args.extra, "environment_dir": str(env)})
+    # Concurrent setup calls share this destination after prepare_env releases
+    # its lock. Serialize replacement: Windows can reject overlapping replaces.
+    with locked(root / ".environment.lock"):
+        atomic_json(root / "environment.json", {"stdlib": args.stdlib, "extras": args.extra, "environment_dir": str(env)})
     supervisor = platform_supervisor()
     updates = {}
     if args.harness:
